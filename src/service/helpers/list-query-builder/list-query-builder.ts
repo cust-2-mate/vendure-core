@@ -87,7 +87,7 @@ export class ListQueryBuilder implements OnApplicationBootstrap {
         // tslint:disable-next-line:no-non-null-assertion
         FindOptionsUtils.joinEagerRelations(qb, qb.alias, qb.expressionMap.mainAlias!.metadata);
 
-        //this.applyTranslationConditions(qb, entity, extendedOptions.ctx);
+        this.applyTranslationConditions(qb, entity, extendedOptions.ctx);
 
         // join the tables required by calculated columns
         this.joinCalculatedColumnRelations(qb, entity, options);
