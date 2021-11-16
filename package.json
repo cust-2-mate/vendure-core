@@ -1,44 +1,35 @@
 {
-  "name": "@vendure/core",
-  "version": "1.2.3",
-  "description": "A modern, headless ecommerce framework",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/vendure-ecommerce/vendure/"
+  "_from": "@vendure/core@1.1.5",
+  "_id": "@vendure/core@1.1.5",
+  "_inBundle": false,
+  "_integrity": "sha512-zIWBHM8E/fjrFhri9vwiXv2bW+AEOZxD3JcKTjmemJJQ5I+cVy/hbWIaK+FbIp9mbN7JcXnhWll3HJPqym+wug==",
+  "_location": "/@vendure/core",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "version",
+    "registry": true,
+    "raw": "@vendure/core@1.1.5",
+    "name": "@vendure/core",
+    "escapedName": "@vendure%2fcore",
+    "scope": "@vendure",
+    "rawSpec": "1.1.5",
+    "saveSpec": null,
+    "fetchSpec": "1.1.5"
   },
-  "keywords": [
-    "vendure",
-    "ecommerce",
-    "headless",
-    "graphql",
-    "typescript"
+  "_requiredBy": [
+    "/"
   ],
-  "homepage": "https://www.vendure.io/",
-  "funding": "https://github.com/sponsors/michaelbromley",
-  "private": false,
-  "license": "MIT",
-  "scripts": {
-    "tsc:watch": "tsc -p ./build/tsconfig.build.json --watch",
-    "gulp:watch": "gulp -f ./build/gulpfile.ts watch",
-    "build": "rimraf dist && tsc -p ./build/tsconfig.build.json && tsc -p ./build/tsconfig.cli.json && gulp -f ./build/gulpfile.ts build",
-    "watch": "concurrently yarn:tsc:watch yarn:gulp:watch",
-    "lint": "tslint --fix --project ./",
-    "test": "jest --config ./jest.config.js",
-    "e2e": "jest --config ../../e2e-common/jest-config.js --runInBand --package=core",
-    "ci": "yarn build"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "_resolved": "https://registry.npmjs.org/@vendure/core/-/core-1.1.5.tgz",
+  "_shasum": "4cea443d5c953461f067ea67c345ac0ae7c5df16",
+  "_spec": "@vendure/core@1.1.5",
+  "_where": "C:\\Users\\leviv\\test\\repo\\c2m-vendure-server",
   "bin": {
     "vendure": "cli/vendure-cli.js"
   },
-  "files": [
-    "dist/**/*",
-    "cli/**/*"
-  ],
+  "bugs": {
+    "url": "https://github.com/vendure-ecommerce/vendure/issues"
+  },
+  "bundleDependencies": false,
   "dependencies": {
     "@graphql-tools/stitch": "^7.5.3",
     "@nestjs/common": "7.6.17",
@@ -49,7 +40,7 @@
     "@nestjs/testing": "7.6.17",
     "@nestjs/typeorm": "7.1.5",
     "@types/fs-extra": "^9.0.1",
-    "@vendure/common": "^1.2.3",
+    "@vendure/common": "^1.1.5",
     "apollo-server-express": "2.24.1",
     "bcrypt": "^5.0.0",
     "body-parser": "^1.19.0",
@@ -58,17 +49,17 @@
     "cookie-session": "^2.0.0-rc.1",
     "csv-parse": "^4.12.0",
     "express": "^4.17.1",
-    "fs-extra": "^10.0.0",
-    "graphql": "15.5.1",
+    "fs-extra": "^9.0.1",
+    "graphql": "15.5.0",
     "graphql-scalars": "^1.10.0",
     "graphql-tag": "^2.12.4",
     "graphql-upload": "^12.0.0",
-    "http-proxy-middleware": "^2.0.1",
+    "http-proxy-middleware": "^1.0.5",
     "i18next": "^19.8.1",
     "i18next-express-middleware": "^2.0.0",
     "i18next-fs-backend": "^1.1.1",
     "i18next-icu": "^1.4.2",
-    "image-size": "^1.0.0",
+    "image-size": "^0.9.1",
     "mime-types": "^2.1.27",
     "ms": "^2.1.2",
     "nanoid": "^3.1.23",
@@ -77,6 +68,8 @@
     "rxjs": "^6.6.3",
     "typeorm": "0.2.31"
   },
+  "deprecated": false,
+  "description": "A modern, headless ecommerce framework",
   "devDependencies": {
     "@types/bcrypt": "^3.0.0",
     "@types/cookie-session": "^2.0.41",
@@ -97,6 +90,42 @@
     "rimraf": "^3.0.2",
     "sql.js": "1.3.2",
     "sqlite3": "^5.0.0",
-    "typescript": "4.3.5"
-  }
+    "typescript": "4.1.5"
+  },
+  "files": [
+    "dist/**/*",
+    "cli/**/*"
+  ],
+  "gitHead": "9a91fab05b7150846cfab54a4f186d27f20d39e1",
+  "homepage": "https://github.com/vendure-ecommerce/vendure#readme",
+  "keywords": [
+    "vendure",
+    "ecommerce",
+    "headless",
+    "graphql",
+    "typescript"
+  ],
+  "license": "MIT",
+  "main": "dist/index.js",
+  "name": "@vendure/core",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vendure-ecommerce/vendure.git"
+  },
+  "scripts": {
+    "build": "rimraf dist && tsc -p ./build/tsconfig.build.json && tsc -p ./build/tsconfig.cli.json && gulp -f ./build/gulpfile.ts build",
+    "ci": "yarn build",
+    "e2e": "jest --config ../../e2e-common/jest-config.js --runInBand --package=core",
+    "gulp:watch": "gulp -f ./build/gulpfile.ts watch",
+    "lint": "tslint --fix --project ./",
+    "test": "jest --config ./jest.config.js",
+    "tsc:watch": "tsc -p ./build/tsconfig.build.json --watch",
+    "watch": "concurrently yarn:tsc:watch yarn:gulp:watch"
+  },
+  "types": "dist/index.d.ts",
+  "version": "1.1.5"
 }

@@ -1,0 +1,34 @@
+import { CanActivate, ExecutionContext } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { ConfigService } from '../../config/config.service';
+import { ChannelService } from '../../service/services/channel.service';
+import { CustomerService } from '../../service/services/customer.service';
+import { SessionService } from '../../service/services/session.service';
+import { RequestContextService } from '../common/request-context.service';
+/**
+ * @description
+ * A guard which:
+ *
+ * 1. checks for the existence of a valid session token in the request and if found,
+ * attaches the current User entity to the request.
+ * 2. enforces any permissions required by the target handler (resolver, field resolver or route),
+ * and throws a ForbiddenError if those permissions are not present.
+ */
+export declare class AuthGuard implements CanActivate {
+    private reflector;
+    private configService;
+    private requestContextService;
+    private sessionService;
+    private customerService;
+    private channelService;
+    strategy: any;
+    constructor(reflector: Reflector, configService: ConfigService, requestContextService: RequestContextService, sessionService: SessionService, customerService: CustomerService, channelService: ChannelService);
+    canActivate(context: ExecutionContext): Promise<boolean>;
+    private setActiveChannel;
+    private getSession;
+    /**
+     * Returns true is this guard is being called on a FieldResolver, i.e. not a top-level
+     * Query or Mutation resolver.
+     */
+    private isFieldResolver;
+}

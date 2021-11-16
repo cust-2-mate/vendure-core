@@ -1,0 +1,34 @@
+import { StockMovementListOptions } from '@vendure/common/lib/generated-types';
+import { ID, PaginatedList } from '@vendure/common/lib/shared-types';
+import { RequestContext } from '../../api/common/request-context';
+import { ShippingCalculator } from '../../config/shipping-method/shipping-calculator';
+import { ShippingEligibilityChecker } from '../../config/shipping-method/shipping-eligibility-checker';
+import { OrderItem } from '../../entity/order-item/order-item.entity';
+import { Order } from '../../entity/order/order.entity';
+import { Allocation } from '../../entity/stock-movement/allocation.entity';
+import { Cancellation } from '../../entity/stock-movement/cancellation.entity';
+import { Release } from '../../entity/stock-movement/release.entity';
+import { Sale } from '../../entity/stock-movement/sale.entity';
+import { StockAdjustment } from '../../entity/stock-movement/stock-adjustment.entity';
+import { StockMovement } from '../../entity/stock-movement/stock-movement.entity';
+import { EventBus } from '../../event-bus/event-bus';
+import { ListQueryBuilder } from '../helpers/list-query-builder/list-query-builder';
+import { TransactionalConnection } from '../transaction/transactional-connection';
+import { GlobalSettingsService } from './global-settings.service';
+export declare class StockMovementService {
+    private connection;
+    private listQueryBuilder;
+    private globalSettingsService;
+    private eventBus;
+    shippingEligibilityCheckers: ShippingEligibilityChecker[];
+    shippingCalculators: ShippingCalculator[];
+    private activeShippingMethods;
+    constructor(connection: TransactionalConnection, listQueryBuilder: ListQueryBuilder, globalSettingsService: GlobalSettingsService, eventBus: EventBus);
+    getStockMovementsByProductVariantId(ctx: RequestContext, productVariantId: ID, options: StockMovementListOptions): Promise<PaginatedList<StockMovement>>;
+    adjustProductVariantStock(ctx: RequestContext, productVariantId: ID, oldStockLevel: number, newStockLevel: number): Promise<StockAdjustment | undefined>;
+    createAllocationsForOrder(ctx: RequestContext, order: Order): Promise<Allocation[]>;
+    createSalesForOrder(ctx: RequestContext, orderItems: OrderItem[]): Promise<Sale[]>;
+    createCancellationsForOrderItems(ctx: RequestContext, items: OrderItem[]): Promise<Cancellation[]>;
+    createReleasesForOrderItems(ctx: RequestContext, items: OrderItem[]): Promise<Release[]>;
+    private trackInventoryForVariant;
+}
