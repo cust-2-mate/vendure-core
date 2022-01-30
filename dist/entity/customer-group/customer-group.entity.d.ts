@@ -1,5 +1,7 @@
 import { DeepPartial } from '@vendure/common/lib/shared-types';
+import { HasCustomFields } from '../../config/custom-field/custom-field-types';
 import { VendureEntity } from '../base/base.entity';
+import { CustomCustomerGroupFields } from '../custom-entity-fields';
 import { Customer } from '../customer/customer.entity';
 /**
  * @description
@@ -8,8 +10,9 @@ import { Customer } from '../customer/customer.entity';
  *
  * @docsCategory entities
  */
-export declare class CustomerGroup extends VendureEntity {
+export declare class CustomerGroup extends VendureEntity implements HasCustomFields {
     constructor(input?: DeepPartial<CustomerGroup>);
     name: string;
     customers: Customer[];
+    customFields: CustomCustomerGroupFields;
 }

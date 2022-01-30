@@ -1,5 +1,5 @@
 import { ConfigArg, ConfigurableOperationDefinition, LocalizedString, Maybe, StringFieldOption } from '@vendure/common/lib/generated-types';
-import { ConfigArgType, DefaultFormComponentConfig, ID } from '@vendure/common/lib/shared-types';
+import { ConfigArgType, ID, UiComponentConfig } from '@vendure/common/lib/shared-types';
 import { RequestContext } from '../api/common/request-context';
 import { Injector } from './injector';
 import { InjectableStrategy } from './types/injectable-strategy';
@@ -21,28 +21,6 @@ import { InjectableStrategy } from './types/injectable-strategy';
  * @docsCategory ConfigurableOperationDef
  */
 export declare type LocalizedStringArray = Array<Omit<LocalizedString, '__typename'>>;
-export declare type UiComponentConfig = ({
-    component: 'number-form-input';
-} & DefaultFormComponentConfig<'number-form-input'>) | ({
-    component: 'date-form-input';
-} & DefaultFormComponentConfig<'date-form-input'>) | ({
-    component: 'select-form-input';
-} & DefaultFormComponentConfig<'select-form-input'>) | ({
-    component: 'text-form-input';
-} & DefaultFormComponentConfig<'text-form-input'>) | ({
-    component: 'boolean-form-input';
-} & DefaultFormComponentConfig<'boolean-form-input'>) | ({
-    component: 'currency-form-input';
-} & DefaultFormComponentConfig<'currency-form-input'>) | ({
-    component: 'facet-value-form-input';
-} & DefaultFormComponentConfig<'facet-value-form-input'>) | ({
-    component: 'product-selector-form-input';
-} & DefaultFormComponentConfig<'product-selector-form-input'>) | ({
-    component: 'customer-group-form-input';
-} & DefaultFormComponentConfig<'customer-group-form-input'>) | {
-    component: string;
-    [prop: string]: any;
-};
 export interface ConfigArgCommonDef<T extends ConfigArgType> {
     type: T;
     required?: boolean;
@@ -50,7 +28,7 @@ export interface ConfigArgCommonDef<T extends ConfigArgType> {
     list?: boolean;
     label?: LocalizedStringArray;
     description?: LocalizedStringArray;
-    ui?: UiComponentConfig;
+    ui?: UiComponentConfig<string>;
 }
 export declare type ConfigArgListDef<T extends ConfigArgType, C extends ConfigArgCommonDef<T> = ConfigArgCommonDef<T>> = C & {
     list: true;

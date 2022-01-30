@@ -12,6 +12,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./helpers/active-order/active-order.service"), exports);
 __exportStar(require("./helpers/config-arg/config-arg.service"), exports);
+__exportStar(require("./helpers/entity-hydrator/entity-hydrator.service"), exports);
 __exportStar(require("./helpers/external-authentication/external-authentication.service"), exports);
 __exportStar(require("./helpers/custom-field-relation/custom-field-relation.service"), exports);
 __exportStar(require("./helpers/fulfillment-state-machine/fulfillment-state"), exports);
@@ -23,6 +24,7 @@ __exportStar(require("./helpers/order-modifier/order-modifier"), exports);
 __exportStar(require("./helpers/order-state-machine/order-state"), exports);
 __exportStar(require("./helpers/password-cipher/password-cipher"), exports);
 __exportStar(require("./helpers/payment-state-machine/payment-state"), exports);
+__exportStar(require("./helpers/product-price-applicator/product-price-applicator"), exports);
 __exportStar(require("./helpers/translatable-saver/translatable-saver"), exports);
 __exportStar(require("./helpers/utils/patch-entity"), exports);
 __exportStar(require("./helpers/utils/translate-entity"), exports);
@@ -57,5 +59,4 @@ __exportStar(require("./services/tax-category.service"), exports);
 __exportStar(require("./services/tax-rate.service"), exports);
 __exportStar(require("./services/user.service"), exports);
 __exportStar(require("./services/zone.service"), exports);
-__exportStar(require("./transaction/transactional-connection"), exports);
 //# sourceMappingURL=index.js.map

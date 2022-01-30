@@ -30,7 +30,7 @@ let RequestContextService = class RequestContextService {
      */
     async fromRequest(req, info, requiredPermissions, session) {
         const channelToken = this.getChannelToken(req);
-        const channel = this.channelService.getChannelFromToken(channelToken);
+        const channel = await this.channelService.getChannelFromToken(channelToken);
         const apiType = get_api_type_1.getApiType(info);
         const hasOwnerPermission = !!requiredPermissions && requiredPermissions.includes(generated_types_1.Permission.Owner);
         const languageCode = this.getLanguageCode(req, channel);

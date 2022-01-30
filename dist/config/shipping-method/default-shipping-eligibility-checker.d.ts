@@ -5,7 +5,7 @@ export declare const defaultShippingEligibilityChecker: ShippingEligibilityCheck
         type: "int";
         defaultValue: number;
         ui: {
-            component: "currency-form-input";
+            component: string;
         };
         label: {
             languageCode: LanguageCode.en;

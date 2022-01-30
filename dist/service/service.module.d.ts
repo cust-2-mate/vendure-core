@@ -1,5 +1,3 @@
-import { DynamicModule } from '@nestjs/common';
-import { ConnectionOptions } from 'typeorm';
 /**
  * The ServiceCoreModule is imported internally by the ServiceModule. It is arranged in this way so that
  * there is only a single instance of this module being instantiated, and thus the lifecycle hooks will
@@ -15,7 +13,4 @@ export declare class ServiceCoreModule {
  * into a format suitable for the service layer logic.
  */
 export declare class ServiceModule {
-    static forRoot(): DynamicModule;
-    static forPlugin(): DynamicModule;
-    static getTypeOrmLogger(dbConnectionOptions: ConnectionOptions): "debug" | "advanced-console" | "simple-console" | "file" | import("typeorm").Logger;
 }

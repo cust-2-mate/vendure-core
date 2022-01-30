@@ -4,15 +4,16 @@ exports.MysqlSearchStrategy = void 0;
 const generated_types_1 = require("@vendure/common/lib/generated-types");
 const typeorm_1 = require("typeorm");
 const errors_1 = require("../../../common/error/errors");
-const search_index_item_entity_1 = require("../search-index-item.entity");
+const search_index_item_entity_1 = require("../entities/search-index-item.entity");
 const search_strategy_common_1 = require("./search-strategy-common");
 const search_strategy_utils_1 = require("./search-strategy-utils");
 /**
  * A weighted fulltext search for MySQL / MariaDB.
  */
 class MysqlSearchStrategy {
-    constructor(connection) {
+    constructor(connection, options) {
         this.connection = connection;
+        this.options = options;
         this.minTermLength = 2;
     }
     async getFacetValueIds(ctx, input, enabledOnly) {
@@ -21,7 +22,7 @@ class MysqlSearchStrategy {
             .createQueryBuilder('si')
             .select(['MIN(productId)', 'MIN(productVariantId)'])
             .addSelect('GROUP_CONCAT(facetValueIds)', 'facetValues');
-        this.applyTermAndFilters(ctx, facetValuesQb, input);
+        this.applyTermAndFilters(ctx, facetValuesQb, Object.assign(Object.assign({}, input), { groupByProduct: true }));
         if (!input.groupByProduct) {
             facetValuesQb.groupBy('productVariantId');
         }
@@ -100,7 +101,7 @@ class MysqlSearchStrategy {
         return totalItemsQb.getRawOne().then(res => res.total);
     }
     applyTermAndFilters(ctx, qb, input) {
-        const { term, facetValueFilters, facetValueIds, facetValueOperator, collectionId, collectionSlug, } = input;
+        const { term, facetValueFilters, facetValueIds, facetValueOperator, collectionId, collectionSlug } = input;
         if (term && term.length > this.minTermLength) {
             const termScoreQuery = this.connection
                 .getRepository(search_index_item_entity_1.SearchIndexItem)
@@ -109,17 +110,17 @@ class MysqlSearchStrategy {
                 .addSelect('si_inner.productVariantId', 'inner_productVariantId')
                 .addSelect(`IF (sku LIKE :like_term, 10, 0)`, 'sku_score')
                 .addSelect(`(SELECT sku_score) +
-                     MATCH (productName) AGAINST (:term) * 2 +
-                     MATCH (productVariantName) AGAINST (:term) * 1.5 +
-                     MATCH (description) AGAINST (:term)* 1`, 'score')
+                     MATCH (productName) AGAINST (:term IN BOOLEAN MODE) * 2 +
+                     MATCH (productVariantName) AGAINST (:term IN BOOLEAN MODE) * 1.5 +
+                     MATCH (description) AGAINST (:term IN BOOLEAN MODE) * 1`, 'score')
                 .where(new typeorm_1.Brackets(qb1 => {
                 qb1.where('sku LIKE :like_term')
-                    .orWhere('MATCH (productName) AGAINST (:term)')
-                    .orWhere('MATCH (productVariantName) AGAINST (:term)')
-                    .orWhere('MATCH (description) AGAINST (:term)');
+                    .orWhere('MATCH (productName) AGAINST (:term IN BOOLEAN MODE)')
+                    .orWhere('MATCH (productVariantName) AGAINST (:term IN BOOLEAN MODE)')
+                    .orWhere('MATCH (description) AGAINST (:term IN BOOLEAN MODE)');
             }))
                 .andWhere('channelId = :channelId')
-                .setParameters({ term, like_term: `%${term}%`, channelId: ctx.channelId });
+                .setParameters({ term: `${term}*`, like_term: `%${term}%`, channelId: ctx.channelId });
             qb.innerJoin(`(${termScoreQuery.getQuery()})`, 'term_result', 'inner_productId = si.productId')
                 .addSelect(input.groupByProduct ? 'MAX(term_result.score)' : 'term_result.score', 'score')
                 .andWhere('term_result.inner_productVariantId = si.productVariantId')
@@ -128,10 +129,18 @@ class MysqlSearchStrategy {
         else {
             qb.addSelect('1 as score');
         }
+        if (input.inStock != null) {
+            if (input.groupByProduct) {
+                qb.andWhere('productInStock = :inStock', { inStock: input.inStock });
+            }
+            else {
+                qb.andWhere('inStock = :inStock', { inStock: input.inStock });
+            }
+        }
         if (facetValueIds === null || facetValueIds === void 0 ? void 0 : facetValueIds.length) {
             qb.andWhere(new typeorm_1.Brackets(qb1 => {
                 for (const id of facetValueIds) {
-                    const placeholder = '_' + id;
+                    const placeholder = search_strategy_utils_1.createPlaceholderFromId(id);
                     const clause = `FIND_IN_SET(:${placeholder}, facetValueIds)`;
                     const params = { [placeholder]: id };
                     if (facetValueOperator === generated_types_1.LogicalOperator.AND) {
@@ -152,14 +161,14 @@ class MysqlSearchStrategy {
                             throw new errors_1.UserInputError('error.facetfilterinput-invalid-input');
                         }
                         if (facetValueFilter.and) {
-                            const placeholder = '_' + facetValueFilter.and;
+                            const placeholder = search_strategy_utils_1.createPlaceholderFromId(facetValueFilter.and);
                             const clause = `FIND_IN_SET(:${placeholder}, facetValueIds)`;
                             const params = { [placeholder]: facetValueFilter.and };
                             qb2.where(clause, params);
                         }
                         if ((_b = facetValueFilter.or) === null || _b === void 0 ? void 0 : _b.length) {
                             for (const id of facetValueFilter.or) {
-                                const placeholder = '_' + id;
+                                const placeholder = search_strategy_utils_1.createPlaceholderFromId(id);
                                 const clause = `FIND_IN_SET(:${placeholder}, facetValueIds)`;
                                 const params = { [placeholder]: id };
                                 qb2.orWhere(clause, params);
@@ -189,7 +198,7 @@ class MysqlSearchStrategy {
      * "MIN" function in this case to all other columns than the productId.
      */
     createMysqlSelect(groupByProduct) {
-        return search_strategy_common_1.fieldsToSelect
+        return search_strategy_common_1.getFieldsToSelect(this.options.indexStockStatus)
             .map(col => {
             const qualifiedName = `si.${col}`;
             const alias = `si_${col}`;
@@ -200,7 +209,7 @@ class MysqlSearchStrategy {
                     col === 'channelIds') {
                     return `GROUP_CONCAT(${qualifiedName}) as "${alias}"`;
                 }
-                else if (col === 'enabled') {
+                else if (col === 'enabled' || col === 'inStock' || col === 'productInStock') {
                     return `MAX(${qualifiedName}) as "${alias}"`;
                 }
                 else {

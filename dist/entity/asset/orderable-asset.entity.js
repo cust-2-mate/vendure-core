@@ -14,11 +14,14 @@ const typeorm_1 = require("typeorm");
 const asset_entity_1 = require("../asset/asset.entity");
 const base_entity_1 = require("../base/base.entity");
 /**
+ * @description
  * This base class is extended in order to enable specific ordering of the one-to-many
  * Entity -> Assets relation. Using a many-to-many relation does not provide a way
  * to guarantee order of the Assets, so this entity is used in place of the
  * usual join table that would be created by TypeORM.
  * See https://typeorm.io/#/many-to-many-relations/many-to-many-relations-with-custom-properties
+ *
+ * @docsCategory entities
  */
 class OrderableAsset extends base_entity_1.VendureEntity {
     constructor(input) {
@@ -30,7 +33,7 @@ __decorate([
     __metadata("design:type", Object)
 ], OrderableAsset.prototype, "assetId", void 0);
 __decorate([
-    typeorm_1.ManyToOne((type) => asset_entity_1.Asset, { eager: true, onDelete: 'CASCADE' }),
+    typeorm_1.ManyToOne(type => asset_entity_1.Asset, { eager: true, onDelete: 'CASCADE' }),
     __metadata("design:type", asset_entity_1.Asset)
 ], OrderableAsset.prototype, "asset", void 0);
 __decorate([

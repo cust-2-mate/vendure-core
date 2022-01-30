@@ -8,7 +8,7 @@ export declare const hasFacetValues: PromotionCondition<{
         type: "ID";
         list: true;
         ui: {
-            component: "facet-value-form-input";
+            component: string;
         };
     };
 }, "at_least_n_with_facets", boolean>;

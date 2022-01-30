@@ -35,17 +35,23 @@ class ExceptionLoggerFilter {
                     config_1.Logger.verbose(message);
                     break;
             }
+            if (exception.stack) {
+                config_1.Logger.debug(exception.stack);
+            }
+            if (isGraphQL) {
+                return exception;
+            }
         }
         else if (exception instanceof common_1.HttpException) {
             // Handle other Nestjs errors
             statusCode = exception.getStatus();
             message = exception.message;
-            let stack = exception.stack;
             if (statusCode === 404) {
-                message = exception.message;
-                stack = undefined;
+                config_1.Logger.verbose(exception.message);
             }
-            config_1.Logger.error(message, undefined, stack);
+            else {
+                config_1.Logger.error(message, undefined, exception.stack);
+            }
         }
         else {
             config_1.Logger.error(exception.message, undefined, exception.stack);

@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.LocaleStringHydrator = void 0;
 const common_1 = require("@nestjs/common");
 const request_context_cache_service_1 = require("../../../cache/request-context-cache.service");
-const transactional_connection_1 = require("../../transaction/transactional-connection");
+const transactional_connection_1 = require("../../../connection/transactional-connection");
 const translate_entity_1 = require("../utils/translate-entity");
 /**
  * This helper class is to be used in GraphQL entity resolvers, to resolve fields which depend on being

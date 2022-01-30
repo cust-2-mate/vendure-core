@@ -4,7 +4,7 @@ export declare const productsPercentageDiscount: PromotionItemAction<{
     discount: {
         type: "int";
         ui: {
-            component: "number-form-input";
+            component: string;
             suffix: string;
         };
     };
@@ -12,7 +12,7 @@ export declare const productsPercentageDiscount: PromotionItemAction<{
         type: "ID";
         list: true;
         ui: {
-            component: "product-selector-form-input";
+            component: string;
         };
         label: {
             languageCode: LanguageCode.en;

@@ -72,7 +72,10 @@ ctor, translation = false) {
                     registerColumn();
                 }
             }
-            if (customFields.filter(f => f.type === 'relation').length === customFields.length) {
+            const relationFieldsCount = customFields.filter(f => f.type === 'relation').length;
+            const nonLocaleStringFieldsCount = customFields.filter(f => f.type !== 'localeString' && f.type !== 'relation').length;
+            if (0 < relationFieldsCount && nonLocaleStringFieldsCount === 0) {
+                // if (customFields.filter(f => f.type === 'relation').length === customFields.length) {
                 // If there are _only_ relational customFields defined for an Entity, then TypeORM
                 // errors when attempting to load that entity ("Cannot set property <fieldName> of undefined").
                 // Therefore as a work-around we will add a "fake" column to the customFields embedded type
@@ -167,8 +170,11 @@ function registerCustomEntityFields(config) {
     registerCustomFieldsForEntity(config, 'Asset', custom_entity_fields_1.CustomAssetFields);
     registerCustomFieldsForEntity(config, 'Collection', custom_entity_fields_1.CustomCollectionFields);
     registerCustomFieldsForEntity(config, 'Collection', custom_entity_fields_1.CustomCollectionFieldsTranslation, true);
-    registerCustomFieldsForEntity(config, 'Customer', custom_entity_fields_1.CustomCustomerFields);
     registerCustomFieldsForEntity(config, 'Channel', custom_entity_fields_1.CustomChannelFields);
+    registerCustomFieldsForEntity(config, 'Country', custom_entity_fields_1.CustomCountryFields);
+    registerCustomFieldsForEntity(config, 'Country', custom_entity_fields_1.CustomCountryFieldsTranslation, true);
+    registerCustomFieldsForEntity(config, 'Customer', custom_entity_fields_1.CustomCustomerFields);
+    registerCustomFieldsForEntity(config, 'CustomerGroup', custom_entity_fields_1.CustomCustomerGroupFields);
     registerCustomFieldsForEntity(config, 'Facet', custom_entity_fields_1.CustomFacetFields);
     registerCustomFieldsForEntity(config, 'Facet', custom_entity_fields_1.CustomFacetFieldsTranslation, true);
     registerCustomFieldsForEntity(config, 'FacetValue', custom_entity_fields_1.CustomFacetValueFields);
@@ -176,6 +182,7 @@ function registerCustomEntityFields(config) {
     registerCustomFieldsForEntity(config, 'Fulfillment', custom_entity_fields_1.CustomFulfillmentFields);
     registerCustomFieldsForEntity(config, 'Order', custom_entity_fields_1.CustomOrderFields);
     registerCustomFieldsForEntity(config, 'OrderLine', custom_entity_fields_1.CustomOrderLineFields);
+    registerCustomFieldsForEntity(config, 'PaymentMethod', custom_entity_fields_1.CustomPaymentMethodFields);
     registerCustomFieldsForEntity(config, 'Product', custom_entity_fields_1.CustomProductFields);
     registerCustomFieldsForEntity(config, 'Product', custom_entity_fields_1.CustomProductFieldsTranslation, true);
     registerCustomFieldsForEntity(config, 'ProductOption', custom_entity_fields_1.CustomProductOptionFields);
@@ -184,10 +191,14 @@ function registerCustomEntityFields(config) {
     registerCustomFieldsForEntity(config, 'ProductOptionGroup', custom_entity_fields_1.CustomProductOptionGroupFieldsTranslation, true);
     registerCustomFieldsForEntity(config, 'ProductVariant', custom_entity_fields_1.CustomProductVariantFields);
     registerCustomFieldsForEntity(config, 'ProductVariant', custom_entity_fields_1.CustomProductVariantFieldsTranslation, true);
+    registerCustomFieldsForEntity(config, 'Promotion', custom_entity_fields_1.CustomPromotionFields);
+    registerCustomFieldsForEntity(config, 'TaxCategory', custom_entity_fields_1.CustomTaxCategoryFields);
+    registerCustomFieldsForEntity(config, 'TaxRate', custom_entity_fields_1.CustomTaxRateFields);
     registerCustomFieldsForEntity(config, 'User', custom_entity_fields_1.CustomUserFields);
     registerCustomFieldsForEntity(config, 'GlobalSettings', custom_entity_fields_1.CustomGlobalSettingsFields);
     registerCustomFieldsForEntity(config, 'ShippingMethod', custom_entity_fields_1.CustomShippingMethodFields);
     registerCustomFieldsForEntity(config, 'ShippingMethod', custom_entity_fields_1.CustomShippingMethodFieldsTranslation, true);
+    registerCustomFieldsForEntity(config, 'Zone', custom_entity_fields_1.CustomZoneFields);
 }
 exports.registerCustomEntityFields = registerCustomEntityFields;
 //# sourceMappingURL=register-custom-entity-fields.js.map

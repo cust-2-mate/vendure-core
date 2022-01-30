@@ -4,9 +4,9 @@ exports.SqlJobQueueStrategy = void 0;
 const generated_types_1 = require("@vendure/common/lib/generated-types");
 const typeorm_1 = require("typeorm");
 const vendure_logger_1 = require("../../config/logger/vendure-logger");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const job_queue_1 = require("../../job-queue");
 const polling_job_queue_strategy_1 = require("../../job-queue/polling-job-queue-strategy");
-const service_1 = require("../../service");
 const list_query_builder_1 = require("../../service/helpers/list-query-builder/list-query-builder");
 const job_record_entity_1 = require("./job-record.entity");
 /**
@@ -18,7 +18,7 @@ const job_record_entity_1 = require("./job-record.entity");
  */
 class SqlJobQueueStrategy extends polling_job_queue_strategy_1.PollingJobQueueStrategy {
     init(injector) {
-        this.connection = injector.get(service_1.TransactionalConnection).rawConnection;
+        this.connection = injector.get(transactional_connection_1.TransactionalConnection).rawConnection;
         this.listQueryBuilder = injector.get(list_query_builder_1.ListQueryBuilder);
         super.init(injector);
     }
@@ -31,7 +31,7 @@ class SqlJobQueueStrategy extends polling_job_queue_strategy_1.PollingJobQueueSt
             throw new Error('Connection not available');
         }
         const constrainedData = this.constrainDataSize(job);
-        const newRecord = this.toRecord(job, constrainedData);
+        const newRecord = this.toRecord(job, constrainedData, this.setRetries(job.queueName, job));
         const record = await this.connection.getRepository(job_record_entity_1.JobRecord).save(newRecord);
         return this.fromRecord(record);
     }
@@ -187,7 +187,7 @@ class SqlJobQueueStrategy extends polling_job_queue_strategy_1.PollingJobQueueSt
     connectionAvailable(connection) {
         return !!this.connection && this.connection.isConnected;
     }
-    toRecord(job, data) {
+    toRecord(job, data, retries) {
         return new job_record_entity_1.JobRecord({
             id: job.id || undefined,
             queueName: job.queueName,
@@ -199,7 +199,7 @@ class SqlJobQueueStrategy extends polling_job_queue_strategy_1.PollingJobQueueSt
             startedAt: job.startedAt,
             settledAt: job.settledAt,
             isSettled: job.isSettled,
-            retries: job.retries,
+            retries: retries !== null && retries !== void 0 ? retries : job.retries,
             attempts: job.attempts,
         });
     }

@@ -13,6 +13,7 @@ exports.Zone = void 0;
 const typeorm_1 = require("typeorm");
 const base_entity_1 = require("../base/base.entity");
 const country_entity_1 = require("../country/country.entity");
+const custom_entity_fields_1 = require("../custom-entity-fields");
 /**
  * @description
  * A Zone is a grouping of one or more {@link Country} entities. It is used for
@@ -34,6 +35,10 @@ __decorate([
     typeorm_1.JoinTable(),
     __metadata("design:type", Array)
 ], Zone.prototype, "members", void 0);
+__decorate([
+    typeorm_1.Column(type => custom_entity_fields_1.CustomZoneFields),
+    __metadata("design:type", custom_entity_fields_1.CustomZoneFields)
+], Zone.prototype, "customFields", void 0);
 Zone = __decorate([
     typeorm_1.Entity(),
     __metadata("design:paramtypes", [Object])

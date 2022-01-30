@@ -35,9 +35,17 @@ let OrderItem = class OrderItem extends base_entity_1.VendureEntity {
         var _a;
         return (_a = this.fulfillments) === null || _a === void 0 ? void 0 : _a.find(f => f.state !== 'Cancelled');
     }
+    /**
+     * @description
+     * The price of a single unit, excluding tax and discounts.
+     */
     get unitPrice() {
         return this.listPriceIncludesTax ? tax_utils_1.netPriceOf(this.listPrice, this.taxRate) : this.listPrice;
     }
+    /**
+     * @description
+     * The price of a single unit, including tax but excluding discounts.
+     */
     get unitPriceWithTax() {
         return this.listPriceIncludesTax ? this.listPrice : tax_utils_1.grossPriceOf(this.listPrice, this.taxRate);
     }
@@ -52,18 +60,41 @@ let OrderItem = class OrderItem extends base_entity_1.VendureEntity {
     get unitTax() {
         return this.unitPriceWithTax - this.unitPrice;
     }
+    /**
+     * @description
+     * The price of a single unit including discounts, excluding tax.
+     *
+     * If Order-level discounts have been applied, this will not be the
+     * actual taxable unit price (see `proratedUnitPrice`), but is generally the
+     * correct price to display to customers to avoid confusion
+     * about the internal handling of distributed Order-level discounts.
+     */
     get discountedUnitPrice() {
         const result = this.listPrice + this.getAdjustmentsTotal(generated_types_1.AdjustmentType.PROMOTION);
         return this.listPriceIncludesTax ? tax_utils_1.netPriceOf(result, this.taxRate) : result;
     }
+    /**
+     * @description
+     * The price of a single unit including discounts and tax.
+     */
     get discountedUnitPriceWithTax() {
         const result = this.listPrice + this.getAdjustmentsTotal(generated_types_1.AdjustmentType.PROMOTION);
         return this.listPriceIncludesTax ? result : tax_utils_1.grossPriceOf(result, this.taxRate);
     }
+    /**
+     * @description
+     * The actual unit price, taking into account both item discounts _and_ prorated (proportionally-distributed)
+     * Order-level discounts. This value is the true economic value of the OrderItem, and is used in tax
+     * and refund calculations.
+     */
     get proratedUnitPrice() {
         const result = this.listPrice + this.getAdjustmentsTotal();
         return this.listPriceIncludesTax ? tax_utils_1.netPriceOf(result, this.taxRate) : result;
     }
+    /**
+     * @description
+     * The `proratedUnitPrice` including tax.
+     */
     get proratedUnitPriceWithTax() {
         const result = this.listPrice + this.getAdjustmentsTotal();
         return this.listPriceIncludesTax ? result : tax_utils_1.grossPriceOf(result, this.taxRate);

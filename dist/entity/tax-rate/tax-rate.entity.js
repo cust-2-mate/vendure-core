@@ -14,6 +14,7 @@ const typeorm_1 = require("typeorm");
 const tax_utils_1 = require("../../common/tax-utils");
 const utils_1 = require("../../common/utils");
 const base_entity_1 = require("../base/base.entity");
+const custom_entity_fields_1 = require("../custom-entity-fields");
 const customer_group_entity_1 = require("../customer-group/customer-group.entity");
 const tax_category_entity_1 = require("../tax-category/tax-category.entity");
 const value_transformers_1 = require("../value-transformers");
@@ -90,6 +91,10 @@ __decorate([
     typeorm_1.ManyToOne(type => customer_group_entity_1.CustomerGroup, { nullable: true }),
     __metadata("design:type", customer_group_entity_1.CustomerGroup)
 ], TaxRate.prototype, "customerGroup", void 0);
+__decorate([
+    typeorm_1.Column(type => custom_entity_fields_1.CustomTaxRateFields),
+    __metadata("design:type", custom_entity_fields_1.CustomTaxRateFields)
+], TaxRate.prototype, "customFields", void 0);
 TaxRate = __decorate([
     typeorm_1.Entity(),
     __metadata("design:paramtypes", [Object])

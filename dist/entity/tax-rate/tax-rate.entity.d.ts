@@ -1,6 +1,8 @@
 import { TaxLine } from '@vendure/common/lib/generated-types';
 import { DeepPartial } from '@vendure/common/lib/shared-types';
+import { HasCustomFields } from '../../config/custom-field/custom-field-types';
 import { VendureEntity } from '../base/base.entity';
+import { CustomTaxRateFields } from '../custom-entity-fields';
 import { CustomerGroup } from '../customer-group/customer-group.entity';
 import { TaxCategory } from '../tax-category/tax-category.entity';
 import { Zone } from '../zone/zone.entity';
@@ -14,7 +16,7 @@ import { Zone } from '../zone/zone.entity';
  *
  * @docsCategory entities
  */
-export declare class TaxRate extends VendureEntity {
+export declare class TaxRate extends VendureEntity implements HasCustomFields {
     constructor(input?: DeepPartial<TaxRate>);
     name: string;
     enabled: boolean;
@@ -22,6 +24,7 @@ export declare class TaxRate extends VendureEntity {
     category: TaxCategory;
     zone: Zone;
     customerGroup?: CustomerGroup;
+    customFields: CustomTaxRateFields;
     /**
      * Returns the tax component of a given gross price.
      */

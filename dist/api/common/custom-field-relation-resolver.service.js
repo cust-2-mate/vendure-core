@@ -13,15 +13,15 @@ exports.CustomFieldRelationResolverService = void 0;
 const common_1 = require("@nestjs/common");
 const FindOptionsUtils_1 = require("typeorm/find-options/FindOptionsUtils");
 const config_service_1 = require("../../config/config.service");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const product_variant_entity_1 = require("../../entity/product-variant/product-variant.entity");
+const product_price_applicator_1 = require("../../service/helpers/product-price-applicator/product-price-applicator");
 const translate_entity_1 = require("../../service/helpers/utils/translate-entity");
-const product_variant_service_1 = require("../../service/services/product-variant.service");
-const transactional_connection_1 = require("../../service/transaction/transactional-connection");
 let CustomFieldRelationResolverService = class CustomFieldRelationResolverService {
-    constructor(connection, configService, productVariantService) {
+    constructor(connection, configService, productPriceApplicator) {
         this.connection = connection;
         this.configService = configService;
-        this.productVariantService = productVariantService;
+        this.productPriceApplicator = productPriceApplicator;
     }
     /**
      * @description
@@ -71,16 +71,14 @@ let CustomFieldRelationResolverService = class CustomFieldRelationResolverServic
             .of(variant)
             .loadOne();
         variant.taxCategory = taxCategory;
-        // We use the ModuleRef to resolve the ProductVariantService here to
-        // avoid a circular dependency in the Nest DI.
-        return this.productVariantService.applyChannelPriceAndTax(variant, ctx);
+        return this.productPriceApplicator.applyChannelPriceAndTax(variant, ctx);
     }
 };
 CustomFieldRelationResolverService = __decorate([
     common_1.Injectable(),
     __metadata("design:paramtypes", [transactional_connection_1.TransactionalConnection,
         config_service_1.ConfigService,
-        product_variant_service_1.ProductVariantService])
+        product_price_applicator_1.ProductPriceApplicator])
 ], CustomFieldRelationResolverService);
 exports.CustomFieldRelationResolverService = CustomFieldRelationResolverService;
 //# sourceMappingURL=custom-field-relation-resolver.service.js.map

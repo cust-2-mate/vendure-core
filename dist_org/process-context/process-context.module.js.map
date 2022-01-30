@@ -1,0 +1,1 @@
+{"version":3,"file":"process-context.module.js","sourceRoot":"","sources":["../../src/process-context/process-context.module.ts"],"names":[],"mappings":";;;;;;;;;AAAA,2CAA+D;AAE/D,uDAAmD;AAOnD,IAAa,oBAAoB,GAAjC,MAAa,oBAAoB;CAAG,CAAA;AAAvB,oBAAoB;IALhC,eAAM,EAAE;IACR,eAAM,CAAC;QACJ,SAAS,EAAE,CAAC,gCAAc,CAAC;QAC3B,OAAO,EAAE,CAAC,gCAAc,CAAC;KAC5B,CAAC;GACW,oBAAoB,CAAG;AAAvB,oDAAoB"}

@@ -8,21 +8,27 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IndexerController = exports.workerLoggerCtx = exports.variantRelations = exports.BATCH_SIZE = void 0;
 const common_1 = require("@nestjs/common");
 const unique_1 = require("@vendure/common/lib/unique");
 const FindOptionsUtils_1 = require("typeorm/find-options/FindOptionsUtils");
-const request_context_1 = require("../../../api/common/request-context");
+const request_context_cache_service_1 = require("../../../cache/request-context-cache.service");
 const async_queue_1 = require("../../../common/async-queue");
 const utils_1 = require("../../../common/utils");
 const config_service_1 = require("../../../config/config.service");
 const vendure_logger_1 = require("../../../config/logger/vendure-logger");
+const transactional_connection_1 = require("../../../connection/transactional-connection");
 const product_variant_entity_1 = require("../../../entity/product-variant/product-variant.entity");
 const product_entity_1 = require("../../../entity/product/product.entity");
+const product_price_applicator_1 = require("../../../service/helpers/product-price-applicator/product-price-applicator");
 const product_variant_service_1 = require("../../../service/services/product-variant.service");
-const transactional_connection_1 = require("../../../service/transaction/transactional-connection");
-const search_index_item_entity_1 = require("../search-index-item.entity");
+const constants_1 = require("../constants");
+const search_index_item_entity_1 = require("../entities/search-index-item.entity");
+const mutable_request_context_1 = require("./mutable-request-context");
 exports.BATCH_SIZE = 1000;
 exports.variantRelations = [
     'product',
@@ -40,14 +46,17 @@ exports.variantRelations = [
 ];
 exports.workerLoggerCtx = 'DefaultSearchPlugin Worker';
 let IndexerController = class IndexerController {
-    constructor(connection, productVariantService, configService) {
+    constructor(connection, productPriceApplicator, configService, requestContextCache, productVariantService, options) {
         this.connection = connection;
-        this.productVariantService = productVariantService;
+        this.productPriceApplicator = productPriceApplicator;
         this.configService = configService;
+        this.requestContextCache = requestContextCache;
+        this.productVariantService = productVariantService;
+        this.options = options;
         this.queue = new async_queue_1.AsyncQueue('search-index');
     }
     reindex({ ctx: rawContext }) {
-        const ctx = request_context_1.RequestContext.deserialize(rawContext);
+        const ctx = mutable_request_context_1.MutableRequestContext.deserialize(rawContext);
         return utils_1.asyncObservable(async (observer) => {
             const timeStart = Date.now();
             const qb = this.getSearchIndexQueryBuilder(ctx.channelId);
@@ -65,7 +74,7 @@ let IndexerController = class IndexerController {
                     .take(exports.BATCH_SIZE)
                     .skip(i * exports.BATCH_SIZE)
                     .getMany();
-                await this.saveVariants(variants);
+                await this.saveVariants(ctx, variants);
                 observer.next({
                     total: count,
                     completed: Math.min((i + 1) * exports.BATCH_SIZE, count),
@@ -81,7 +90,7 @@ let IndexerController = class IndexerController {
         });
     }
     updateVariantsById({ ctx: rawContext, ids, }) {
-        const ctx = request_context_1.RequestContext.deserialize(rawContext);
+        const ctx = mutable_request_context_1.MutableRequestContext.deserialize(rawContext);
         return utils_1.asyncObservable(async (observer) => {
             const timeStart = Date.now();
             if (ids.length) {
@@ -96,7 +105,7 @@ let IndexerController = class IndexerController {
                         relations: exports.variantRelations,
                         where: { deletedAt: null },
                     });
-                    await this.saveVariants(batch);
+                    await this.saveVariants(ctx, batch);
                     observer.next({
                         total: ids.length,
                         completed: Math.min((i + 1) * exports.BATCH_SIZE, ids.length),
@@ -113,19 +122,19 @@ let IndexerController = class IndexerController {
         });
     }
     async updateProduct(data) {
-        const ctx = request_context_1.RequestContext.deserialize(data.ctx);
+        const ctx = mutable_request_context_1.MutableRequestContext.deserialize(data.ctx);
         return this.updateProductInChannel(ctx, data.productId, ctx.channelId);
     }
     async updateVariants(data) {
-        const ctx = request_context_1.RequestContext.deserialize(data.ctx);
+        const ctx = mutable_request_context_1.MutableRequestContext.deserialize(data.ctx);
         return this.updateVariantsInChannel(ctx, data.variantIds, ctx.channelId);
     }
     async deleteProduct(data) {
-        const ctx = request_context_1.RequestContext.deserialize(data.ctx);
+        const ctx = mutable_request_context_1.MutableRequestContext.deserialize(data.ctx);
         return this.deleteProductInChannel(ctx, data.productId, ctx.channelId);
     }
     async deleteVariant(data) {
-        const ctx = request_context_1.RequestContext.deserialize(data.ctx);
+        const ctx = mutable_request_context_1.MutableRequestContext.deserialize(data.ctx);
         const variants = await this.connection.getRepository(product_variant_entity_1.ProductVariant).findByIds(data.variantIds);
         if (variants.length) {
             const languageVariants = unique_1.unique([
@@ -138,20 +147,20 @@ let IndexerController = class IndexerController {
         return true;
     }
     async assignProductToChannel(data) {
-        const ctx = request_context_1.RequestContext.deserialize(data.ctx);
+        const ctx = mutable_request_context_1.MutableRequestContext.deserialize(data.ctx);
         return this.updateProductInChannel(ctx, data.productId, data.channelId);
     }
     async removeProductFromChannel(data) {
-        const ctx = request_context_1.RequestContext.deserialize(data.ctx);
+        const ctx = mutable_request_context_1.MutableRequestContext.deserialize(data.ctx);
         return this.deleteProductInChannel(ctx, data.productId, data.channelId);
     }
     async assignVariantToChannel(data) {
-        const ctx = request_context_1.RequestContext.deserialize(data.ctx);
+        const ctx = mutable_request_context_1.MutableRequestContext.deserialize(data.ctx);
         return this.updateVariantsInChannel(ctx, [data.productVariantId], data.channelId);
     }
     async removeVariantFromChannel(data) {
         var _a;
-        const ctx = request_context_1.RequestContext.deserialize(data.ctx);
+        const ctx = mutable_request_context_1.MutableRequestContext.deserialize(data.ctx);
         const variant = await this.connection.getRepository(product_variant_entity_1.ProductVariant).findOne(data.productVariantId);
         const languageVariants = (_a = variant === null || variant === void 0 ? void 0 : variant.translations.map(t => t.languageCode)) !== null && _a !== void 0 ? _a : [];
         await this.removeSearchIndexItems(data.channelId, [data.productVariantId], languageVariants);
@@ -200,7 +209,7 @@ let IndexerController = class IndexerController {
                 const variantsInCurrentChannel = updatedVariants.filter(v => !!v.channels.find(c => utils_1.idsAreEqual(c.id, ctx.channelId)));
                 vendure_logger_1.Logger.verbose(`Updating ${variantsInCurrentChannel.length} variants`, exports.workerLoggerCtx);
                 if (variantsInCurrentChannel.length) {
-                    await this.saveVariants(variantsInCurrentChannel);
+                    await this.saveVariants(ctx, variantsInCurrentChannel);
                 }
             }
         }
@@ -213,7 +222,7 @@ let IndexerController = class IndexerController {
         });
         if (variants) {
             vendure_logger_1.Logger.verbose(`Updating ${variants.length} variants`, exports.workerLoggerCtx);
-            await this.saveVariants(variants);
+            await this.saveVariants(ctx, variants);
         }
         return true;
     }
@@ -248,7 +257,7 @@ let IndexerController = class IndexerController {
             .andWhere('variants.deletedAt IS NULL');
         return qb;
     }
-    async saveVariants(variants) {
+    async saveVariants(ctx, variants) {
         const items = [];
         await this.removeSyntheticVariants(variants);
         for (const variant of variants) {
@@ -261,15 +270,9 @@ let IndexerController = class IndexerController {
                 const variantTranslation = this.getTranslation(variant, languageCode);
                 const collectionTranslations = variant.collections.map(c => this.getTranslation(c, languageCode));
                 for (const channel of variant.channels) {
-                    const ctx = new request_context_1.RequestContext({
-                        channel,
-                        apiType: 'admin',
-                        authorizedAsOwnerOnly: false,
-                        isAuthorized: true,
-                        session: {},
-                    });
-                    await this.productVariantService.applyChannelPriceAndTax(variant, ctx);
-                    items.push(new search_index_item_entity_1.SearchIndexItem({
+                    ctx.setChannel(channel);
+                    await this.productPriceApplicator.applyChannelPriceAndTax(variant, ctx);
+                    const item = new search_index_item_entity_1.SearchIndexItem({
                         channelId: channel.id,
                         languageCode,
                         productVariantId: variant.id,
@@ -301,11 +304,27 @@ let IndexerController = class IndexerController {
                         facetValueIds: this.getFacetValueIds(variant),
                         collectionIds: variant.collections.map(c => c.id.toString()),
                         collectionSlugs: collectionTranslations.map(c => c.slug),
-                    }));
+                    });
+                    if (this.options.indexStockStatus) {
+                        item.inStock =
+                            0 < (await this.productVariantService.getSaleableStockLevel(ctx, variant));
+                        const productInStock = await this.requestContextCache.get(ctx, `productVariantsStock-${variant.productId}`, () => this.connection
+                            .getRepository(ctx, product_variant_entity_1.ProductVariant)
+                            .find({
+                            loadEagerRelations: false,
+                            where: {
+                                productId: variant.productId,
+                            },
+                        })
+                            .then(_variants => Promise.all(_variants.map(v => this.productVariantService.getSaleableStockLevel(ctx, v))))
+                            .then(stockLevels => stockLevels.some(stockLevel => 0 < stockLevel)));
+                        item.productInStock = productInStock;
+                    }
+                    items.push(item);
                 }
             }
         }
-        await this.queue.push(() => this.connection.getRepository(search_index_item_entity_1.SearchIndexItem).save(items));
+        await this.queue.push(() => this.connection.getRepository(search_index_item_entity_1.SearchIndexItem).save(items, { chunk: 2500 }));
     }
     /**
      * If a Product has no variants, we create a synthetic variant for the purposes
@@ -402,9 +421,12 @@ let IndexerController = class IndexerController {
 };
 IndexerController = __decorate([
     common_1.Injectable(),
+    __param(5, common_1.Inject(constants_1.PLUGIN_INIT_OPTIONS)),
     __metadata("design:paramtypes", [transactional_connection_1.TransactionalConnection,
-        product_variant_service_1.ProductVariantService,
-        config_service_1.ConfigService])
+        product_price_applicator_1.ProductPriceApplicator,
+        config_service_1.ConfigService,
+        request_context_cache_service_1.RequestContextCacheService,
+        product_variant_service_1.ProductVariantService, Object])
 ], IndexerController);
 exports.IndexerController = IndexerController;
 //# sourceMappingURL=indexer.controller.js.map

@@ -5,24 +5,46 @@ import { ReadStream } from 'fs-extra';
 import { Readable } from 'stream';
 import { RequestContext } from '../../api/common/request-context';
 import { ConfigService } from '../../config/config.service';
+import { TransactionalConnection } from '../../connection/transactional-connection';
 import { Asset } from '../../entity/asset/asset.entity';
 import { OrderableAsset } from '../../entity/asset/orderable-asset.entity';
 import { VendureEntity } from '../../entity/base/base.entity';
 import { EventBus } from '../../event-bus/event-bus';
 import { CustomFieldRelationService } from '../helpers/custom-field-relation/custom-field-relation.service';
 import { ListQueryBuilder } from '../helpers/list-query-builder/list-query-builder';
-import { TransactionalConnection } from '../transaction/transactional-connection';
 import { ChannelService } from './channel.service';
 import { RoleService } from './role.service';
 import { TagService } from './tag.service';
+/**
+ * @description
+ * Certain entities (Product, ProductVariant, Collection) use this interface
+ * to model a featured asset and then a list of assets with a defined order.
+ *
+ * @docsCategory services
+ * @docsPage AssetService
+ */
 export interface EntityWithAssets extends VendureEntity {
     featuredAsset: Asset | null;
     assets: OrderableAsset[];
 }
+/**
+ * @description
+ * Used when updating entities which implement {@link EntityWithAssets}.
+ *
+ * @docsCategory services
+ * @docsPage AssetService
+ */
 export interface EntityAssetInput {
     assetIds?: ID[] | null;
     featuredAssetId?: ID | null;
 }
+/**
+ * @description
+ * Contains methods relating to {@link Asset} entities.
+ *
+ * @docsCategory services
+ * @docsWeight 0
+ */
 export declare class AssetService {
     private connection;
     private configService;
@@ -37,25 +59,47 @@ export declare class AssetService {
     findOne(ctx: RequestContext, id: ID): Promise<Asset | undefined>;
     findAll(ctx: RequestContext, options?: AssetListOptions): Promise<PaginatedList<Asset>>;
     getFeaturedAsset<T extends Omit<EntityWithAssets, 'assets'>>(ctx: RequestContext, entity: T): Promise<Asset | undefined>;
+    /**
+     * @description
+     * Returns the Assets of an entity which has a well-ordered list of Assets, such as Product,
+     * ProductVariant or Collection.
+     */
     getEntityAssets<T extends EntityWithAssets>(ctx: RequestContext, entity: T): Promise<Asset[] | undefined>;
     updateFeaturedAsset<T extends EntityWithAssets>(ctx: RequestContext, entity: T, input: EntityAssetInput): Promise<T>;
     /**
+     * @description
      * Updates the assets / featuredAsset of an entity, ensuring that only valid assetIds are used.
      */
     updateEntityAssets<T extends EntityWithAssets>(ctx: RequestContext, entity: T, input: EntityAssetInput): Promise<T>;
     /**
-     * Create an Asset based on a file uploaded via the GraphQL API.
+     * @description
+     * Create an Asset based on a file uploaded via the GraphQL API. The file should be uploaded
+     * using the [GraphQL multipart request specification](https://github.com/jaydenseric/graphql-multipart-request-spec),
+     * e.g. using the [apollo-upload-client](https://github.com/jaydenseric/apollo-upload-client) npm package.
+     *
+     * See the [Uploading Files docs](/docs/developer-guide/uploading-files) for an example of usage.
      */
     create(ctx: RequestContext, input: CreateAssetInput): Promise<CreateAssetResult>;
+    /**
+     * @description
+     * Updates the name, focalPoint, tags & custom fields of an Asset.
+     */
     update(ctx: RequestContext, input: UpdateAssetInput): Promise<Asset>;
+    /**
+     * @description
+     * Deletes an Asset after performing checks to ensure that the Asset is not currently in use
+     * by a Product, ProductVariant or Collection.
+     */
     delete(ctx: RequestContext, ids: ID[], force?: boolean, deleteFromAllChannels?: boolean): Promise<DeletionResponse>;
     assignToChannel(ctx: RequestContext, input: AssignAssetsToChannelInput): Promise<Asset[]>;
     /**
-     * Create an Asset from a file stream created during data import.
+     * @description
+     * Create an Asset from a file stream, for example to create an Asset during data import.
      */
     createFromFileStream(stream: ReadStream): Promise<CreateAssetResult>;
     createFromFileStream(stream: Readable, filePath: string): Promise<CreateAssetResult>;
     /**
+     * @description
      * Unconditionally delete given assets.
      * Does not remove assets from channels
      */

@@ -48,7 +48,7 @@ class SubscribableJob extends job_1.Job {
             // tslint:disable-next-line:no-non-null-assertion
             return rxjs_1.interval(pollInterval).pipe(operators_1.tap(i => {
                 if (timeoutMs < i * pollInterval) {
-                    throw new Error(`Job ${this.id} update polling timed out after ${timeoutMs}ms. The job may still be running.`);
+                    throw new Error(`Job ${this.id} SubscribableJob update polling timed out after ${timeoutMs}ms. The job may still be running.`);
                 }
             }), operators_1.switchMap(() => {
                 const id = this.id;

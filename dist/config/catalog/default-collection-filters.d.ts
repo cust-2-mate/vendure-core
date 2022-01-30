@@ -7,7 +7,7 @@ export declare const facetValueCollectionFilter: CollectionFilter<{
         type: "ID";
         list: true;
         ui: {
-            component: "facet-value-form-input";
+            component: string;
         };
     };
     containsAny: {
@@ -18,7 +18,7 @@ export declare const variantNameCollectionFilter: CollectionFilter<{
     operator: {
         type: "string";
         ui: {
-            component: "select-form-input";
+            component: string;
             options: {
                 value: string;
             }[];
@@ -33,7 +33,7 @@ export declare const defaultCollectionFilters: (CollectionFilter<{
         type: "ID";
         list: true;
         ui: {
-            component: "facet-value-form-input";
+            component: string;
         };
     };
     containsAny: {
@@ -43,7 +43,7 @@ export declare const defaultCollectionFilters: (CollectionFilter<{
     operator: {
         type: "string";
         ui: {
-            component: "select-form-input";
+            component: string;
             options: {
                 value: string;
             }[];

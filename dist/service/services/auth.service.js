@@ -16,16 +16,19 @@ const generated_graphql_admin_errors_1 = require("../../common/error/generated-g
 const generated_graphql_shop_errors_1 = require("../../common/error/generated-graphql-shop-errors");
 const native_authentication_strategy_1 = require("../../config/auth/native-authentication-strategy");
 const config_service_1 = require("../../config/config.service");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const authenticated_session_entity_1 = require("../../entity/session/authenticated-session.entity");
 const user_entity_1 = require("../../entity/user/user.entity");
 const event_bus_1 = require("../../event-bus/event-bus");
 const attempted_login_event_1 = require("../../event-bus/events/attempted-login-event");
 const login_event_1 = require("../../event-bus/events/login-event");
 const logout_event_1 = require("../../event-bus/events/logout-event");
-const transactional_connection_1 = require("../transaction/transactional-connection");
 const session_service_1 = require("./session.service");
 /**
- * The AuthService manages both authenticated and anonymous Sessions.
+ * @description
+ * Contains methods relating to {@link Session}, {@link AuthenticatedSession} & {@link AnonymousSession} entities.
+ *
+ * @docsCategory services
  */
 let AuthService = class AuthService {
     constructor(connection, configService, sessionService, eventBus) {
@@ -35,7 +38,8 @@ let AuthService = class AuthService {
         this.eventBus = eventBus;
     }
     /**
-     * Authenticates a user's credentials and if okay, creates a new session.
+     * @description
+     * Authenticates a user's credentials and if okay, creates a new {@link AuthenticatedSession}.
      */
     async authenticate(ctx, apiType, authenticationMethod, authenticationData) {
         this.eventBus.publish(new attempted_login_event_1.AttemptedLoginEvent(ctx, authenticationMethod, authenticationMethod === native_authentication_strategy_1.NATIVE_AUTH_STRATEGY_NAME
@@ -76,7 +80,9 @@ let AuthService = class AuthService {
         return session;
     }
     /**
-     * Verify the provided password against the one we have for the given user.
+     * @description
+     * Verify the provided password against the one we have for the given user. Requires
+     * the {@link NativeAuthenticationStrategy} to be configured.
      */
     async verifyUserPassword(ctx, userId, password) {
         const nativeAuthenticationStrategy = this.getAuthenticationStrategy('shop', native_authentication_strategy_1.NATIVE_AUTH_STRATEGY_NAME);
@@ -87,6 +93,7 @@ let AuthService = class AuthService {
         return true;
     }
     /**
+     * @description
      * Deletes all sessions for the user associated with the given session token.
      */
     async destroyAuthenticatedSession(ctx, sessionToken) {

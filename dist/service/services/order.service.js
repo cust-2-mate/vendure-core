@@ -15,6 +15,7 @@ const generated_types_1 = require("@vendure/common/lib/generated-types");
 const shared_utils_1 = require("@vendure/common/lib/shared-utils");
 const unique_1 = require("@vendure/common/lib/unique");
 const FindOptionsUtils_1 = require("typeorm/find-options/FindOptionsUtils");
+const request_context_cache_service_1 = require("../../cache/request-context-cache.service");
 const error_result_1 = require("../../common/error/error-result");
 const errors_1 = require("../../common/error/errors");
 const generated_graphql_admin_errors_1 = require("../../common/error/generated-graphql-admin-errors");
@@ -22,6 +23,7 @@ const generated_graphql_shop_errors_1 = require("../../common/error/generated-gr
 const tax_utils_1 = require("../../common/tax-utils");
 const utils_1 = require("../../common/utils");
 const config_service_1 = require("../../config/config.service");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const order_item_entity_1 = require("../../entity/order-item/order-item.entity");
 const order_line_entity_1 = require("../../entity/order-line/order-line.entity");
 const order_modification_entity_1 = require("../../entity/order-modification/order-modification.entity");
@@ -32,6 +34,7 @@ const refund_entity_1 = require("../../entity/refund/refund.entity");
 const shipping_line_entity_1 = require("../../entity/shipping-line/shipping-line.entity");
 const surcharge_entity_1 = require("../../entity/surcharge/surcharge.entity");
 const event_bus_1 = require("../../event-bus/event-bus");
+const coupon_code_event_1 = require("../../event-bus/events/coupon-code-event");
 const order_state_transition_event_1 = require("../../event-bus/events/order-state-transition-event");
 const refund_state_transition_event_1 = require("../../event-bus/events/refund-state-transition-event");
 const custom_field_relation_service_1 = require("../helpers/custom-field-relation/custom-field-relation.service");
@@ -46,7 +49,6 @@ const shipping_calculator_1 = require("../helpers/shipping-calculator/shipping-c
 const order_utils_1 = require("../helpers/utils/order-utils");
 const patch_entity_1 = require("../helpers/utils/patch-entity");
 const translate_entity_1 = require("../helpers/utils/translate-entity");
-const transactional_connection_1 = require("../transaction/transactional-connection");
 const channel_service_1 = require("./channel.service");
 const country_service_1 = require("./country.service");
 const customer_service_1 = require("./customer.service");
@@ -57,8 +59,14 @@ const payment_service_1 = require("./payment.service");
 const product_variant_service_1 = require("./product-variant.service");
 const promotion_service_1 = require("./promotion.service");
 const stock_movement_service_1 = require("./stock-movement.service");
+/**
+ * @description
+ * Contains methods relating to {@link Order} entities.
+ *
+ * @docsCategory services
+ */
 let OrderService = class OrderService {
-    constructor(connection, configService, productVariantService, customerService, countryService, orderCalculator, shippingCalculator, orderStateMachine, orderMerger, paymentService, paymentStateMachine, paymentMethodService, fulfillmentService, listQueryBuilder, stockMovementService, refundStateMachine, historyService, promotionService, eventBus, channelService, orderModifier, customFieldRelationService) {
+    constructor(connection, configService, productVariantService, customerService, countryService, orderCalculator, shippingCalculator, orderStateMachine, orderMerger, paymentService, paymentStateMachine, paymentMethodService, fulfillmentService, listQueryBuilder, stockMovementService, refundStateMachine, historyService, promotionService, eventBus, channelService, orderModifier, customFieldRelationService, requestCache) {
         this.connection = connection;
         this.configService = configService;
         this.productVariantService = productVariantService;
@@ -81,7 +89,14 @@ let OrderService = class OrderService {
         this.channelService = channelService;
         this.orderModifier = orderModifier;
         this.customFieldRelationService = customFieldRelationService;
+        this.requestCache = requestCache;
     }
+    /**
+     * @description
+     * Returns an array of all the configured states and transitions of the order process. This is
+     * based on the default order process plus all configured {@link CustomOrderProcess} objects
+     * defined in the {@link OrderOptions} `process` array.
+     */
     getOrderProcessStates() {
         return Object.entries(this.orderStateMachine.config.transitions).map(([name, { to }]) => ({
             name,
@@ -185,6 +200,10 @@ let OrderService = class OrderService {
             };
         });
     }
+    /**
+     * @description
+     * Returns all {@link Payment} entities associated with the Order.
+     */
     getOrderPayments(ctx, orderId) {
         return this.connection.getRepository(ctx, payment_entity_1.Payment).find({
             relations: ['refunds'],
@@ -193,12 +212,20 @@ let OrderService = class OrderService {
             },
         });
     }
+    /**
+     * @description
+     * Returns all OrderItems associated with the given {@link Refund}.
+     */
     async getRefundOrderItems(ctx, refundId) {
         const refund = await this.connection.getEntityOrThrow(ctx, refund_entity_1.Refund, refundId, {
             relations: ['orderItems'],
         });
         return refund.orderItems;
     }
+    /**
+     * @description
+     * Returns an array of any {@link OrderModification} entities associated with the Order.
+     */
     getOrderModifications(ctx, orderId) {
         return this.connection.getRepository(ctx, order_modification_entity_1.OrderModification).find({
             where: {
@@ -207,6 +234,10 @@ let OrderService = class OrderService {
             relations: ['orderItems', 'payment', 'refund', 'surcharges'],
         });
     }
+    /**
+     * @description
+     * Returns any {@link Refund}s associated with a {@link Payment}.
+     */
     getPaymentRefunds(ctx, paymentId) {
         return this.connection.getRepository(ctx, refund_entity_1.Refund).find({
             where: {
@@ -214,6 +245,11 @@ let OrderService = class OrderService {
             },
         });
     }
+    /**
+     * @description
+     * Returns any Order associated with the specified User's Customer account
+     * that is still in the `active` state.
+     */
     async getActiveOrderForUser(ctx, userId) {
         const customer = await this.customerService.findOneByUserId(ctx, userId);
         if (customer) {
@@ -234,6 +270,11 @@ let OrderService = class OrderService {
             }
         }
     }
+    /**
+     * @description
+     * Creates a new, empty Order. If a `userId` is passed, the Order will get associated with that
+     * User's Customer account.
+     */
     async create(ctx, userId) {
         const newOrder = new order_entity_1.Order({
             code: await this.configService.orderOptions.orderCodeStrategy.generate(ctx),
@@ -254,7 +295,7 @@ let OrderService = class OrderService {
                 newOrder.customer = customer;
             }
         }
-        this.channelService.assignToCurrentChannel(newOrder, ctx);
+        await this.channelService.assignToCurrentChannel(newOrder, ctx);
         const order = await this.connection.getRepository(ctx, order_entity_1.Order).save(newOrder);
         const transitionResult = await this.transitionToState(ctx, order.id, 'AddingItems');
         if (error_result_1.isGraphQlErrorResult(transitionResult)) {
@@ -263,6 +304,10 @@ let OrderService = class OrderService {
         }
         return transitionResult;
     }
+    /**
+     * @description
+     * Updates the custom fields of an Order.
+     */
     async updateCustomFields(ctx, orderId, customFields) {
         let order = await this.getOrderOrThrow(ctx, orderId);
         order = patch_entity_1.patchEntity(order, { customFields });
@@ -270,6 +315,7 @@ let OrderService = class OrderService {
         return this.connection.getRepository(ctx, order_entity_1.Order).save(order);
     }
     /**
+     * @description
      * Adds an OrderItem to the Order, either creating a new OrderLine or
      * incrementing an existing one.
      */
@@ -306,7 +352,7 @@ let OrderService = class OrderService {
             await this.orderModifier.updateOrderLineQuantity(ctx, orderLine, correctedQuantity, order);
         }
         const quantityWasAdjustedDown = correctedQuantity < quantity;
-        const updatedOrder = await this.applyPriceAdjustments(ctx, order, orderLine);
+        const updatedOrder = await this.applyPriceAdjustments(ctx, order, [orderLine]);
         if (quantityWasAdjustedDown) {
             return new generated_graphql_shop_errors_1.InsufficientStockError(correctedQuantity, updatedOrder);
         }
@@ -315,7 +361,8 @@ let OrderService = class OrderService {
         }
     }
     /**
-     * Adjusts the quantity of an existing OrderLine
+     * @description
+     * Adjusts the quantity and/or custom field values of an existing OrderLine.
      */
     async adjustOrderLine(ctx, orderId, orderLineId, quantity, customFields) {
         const order = await this.getOrderOrThrow(ctx, orderId);
@@ -332,15 +379,17 @@ let OrderService = class OrderService {
             await this.customFieldRelationService.updateRelations(ctx, order_line_entity_1.OrderLine, { customFields }, orderLine);
         }
         const correctedQuantity = await this.orderModifier.constrainQuantityToSaleable(ctx, orderLine.productVariant, quantity);
+        let updatedOrderLines = [orderLine];
         if (correctedQuantity === 0) {
             order.lines = order.lines.filter(l => !utils_1.idsAreEqual(l.id, orderLine.id));
             await this.connection.getRepository(ctx, order_line_entity_1.OrderLine).remove(orderLine);
+            updatedOrderLines = [];
         }
         else {
             await this.orderModifier.updateOrderLineQuantity(ctx, orderLine, correctedQuantity, order);
         }
         const quantityWasAdjustedDown = correctedQuantity < quantity;
-        const updatedOrder = await this.applyPriceAdjustments(ctx, order, orderLine);
+        const updatedOrder = await this.applyPriceAdjustments(ctx, order, updatedOrderLines);
         if (quantityWasAdjustedDown) {
             return new generated_graphql_shop_errors_1.InsufficientStockError(correctedQuantity, updatedOrder);
         }
@@ -348,6 +397,10 @@ let OrderService = class OrderService {
             return updatedOrder;
         }
     }
+    /**
+     * @description
+     * Removes the specified OrderLine from the Order.
+     */
     async removeItemFromOrder(ctx, orderId, orderLineId) {
         const order = await this.getOrderOrThrow(ctx, orderId);
         const validationError = this.assertAddingItemsState(order);
@@ -360,6 +413,10 @@ let OrderService = class OrderService {
         await this.connection.getRepository(ctx, order_line_entity_1.OrderLine).remove(orderLine);
         return updatedOrder;
     }
+    /**
+     * @description
+     * Removes all OrderLines from the Order.
+     */
     async removeAllItemsFromOrder(ctx, orderId) {
         const order = await this.getOrderOrThrow(ctx, orderId);
         const validationError = this.assertAddingItemsState(order);
@@ -371,6 +428,10 @@ let OrderService = class OrderService {
         const updatedOrder = await this.applyPriceAdjustments(ctx, order);
         return updatedOrder;
     }
+    /**
+     * @description
+     * Adds a {@link Surcharge} to the Order.
+     */
     async addSurchargeToOrder(ctx, orderId, surchargeInput) {
         const order = await this.getOrderOrThrow(ctx, orderId);
         const surcharge = await this.connection.getRepository(ctx, surcharge_entity_1.Surcharge).save(new surcharge_entity_1.Surcharge(Object.assign({ taxLines: [], sku: '', listPriceIncludesTax: ctx.channel.pricesIncludeTax, order }, surchargeInput)));
@@ -378,6 +439,10 @@ let OrderService = class OrderService {
         const updatedOrder = await this.applyPriceAdjustments(ctx, order);
         return updatedOrder;
     }
+    /**
+     * @description
+     * Removes a {@link Surcharge} from the Order.
+     */
     async removeSurchargeFromOrder(ctx, orderId, surchargeId) {
         const order = await this.getOrderOrThrow(ctx, orderId);
         const surcharge = await this.connection.getEntityOrThrow(ctx, surcharge_entity_1.Surcharge, surchargeId);
@@ -391,6 +456,11 @@ let OrderService = class OrderService {
             return order;
         }
     }
+    /**
+     * @description
+     * Applies a coupon code to the Order, which should be a valid coupon code as specified in the configuration
+     * of an active {@link Promotion}.
+     */
     async applyCouponCode(ctx, orderId, couponCode) {
         const order = await this.getOrderOrThrow(ctx, orderId);
         if (order.couponCodes.includes(couponCode)) {
@@ -407,8 +477,13 @@ let OrderService = class OrderService {
             type: generated_types_1.HistoryEntryType.ORDER_COUPON_APPLIED,
             data: { couponCode, promotionId: validationResult.id },
         });
+        this.eventBus.publish(new coupon_code_event_1.CouponCodeEvent(ctx, couponCode, orderId, 'assigned'));
         return this.applyPriceAdjustments(ctx, order);
     }
+    /**
+     * @description
+     * Removes a coupon code from the Order.
+     */
     async removeCouponCode(ctx, orderId, couponCode) {
         const order = await this.getOrderOrThrow(ctx, orderId);
         if (order.couponCodes.includes(couponCode)) {
@@ -426,6 +501,7 @@ let OrderService = class OrderService {
                 type: generated_types_1.HistoryEntryType.ORDER_COUPON_REMOVED,
                 data: { couponCode },
             });
+            this.eventBus.publish(new coupon_code_event_1.CouponCodeEvent(ctx, couponCode, orderId, 'removed'));
             const result = await this.applyPriceAdjustments(ctx, order);
             await this.connection.getRepository(ctx, order_item_entity_1.OrderItem).save(affectedOrderItems);
             return result;
@@ -434,6 +510,11 @@ let OrderService = class OrderService {
             return order;
         }
     }
+    /**
+     * @description
+     * Returns all {@link Promotion}s associated with an Order. A Promotion only gets associated with
+     * and Order once the order has been placed (see {@link OrderPlacedStrategy}).
+     */
     async getOrderPromotions(ctx, orderId) {
         const order = await this.connection.getEntityOrThrow(ctx, order_entity_1.Order, orderId, {
             channelId: ctx.channelId,
@@ -441,21 +522,51 @@ let OrderService = class OrderService {
         });
         return order.promotions || [];
     }
+    /**
+     * @description
+     * Returns the next possible states that the Order may transition to.
+     */
     getNextOrderStates(order) {
         return this.orderStateMachine.getNextStates(order);
     }
+    /**
+     * @description
+     * Sets the shipping address for the Order.
+     */
     async setShippingAddress(ctx, orderId, input) {
         const order = await this.getOrderOrThrow(ctx, orderId);
         const country = await this.countryService.findOneByCode(ctx, input.countryCode);
         order.shippingAddress = Object.assign(Object.assign({}, input), { countryCode: input.countryCode, country: country.name });
-        return this.connection.getRepository(ctx, order_entity_1.Order).save(order);
+        await this.connection.getRepository(ctx, order_entity_1.Order).save(order);
+        // Since a changed ShippingAddress could alter the activeTaxZone,
+        // we will remove any cached activeTaxZone so it can be re-calculated
+        // as needed.
+        this.requestCache.set(ctx, 'activeTaxZone', undefined);
+        return this.applyPriceAdjustments(ctx, order, order.lines);
     }
+    /**
+     * @description
+     * Sets the billing address for the Order.
+     */
     async setBillingAddress(ctx, orderId, input) {
         const order = await this.getOrderOrThrow(ctx, orderId);
         const country = await this.countryService.findOneByCode(ctx, input.countryCode);
         order.billingAddress = Object.assign(Object.assign({}, input), { countryCode: input.countryCode, country: country.name });
-        return this.connection.getRepository(ctx, order_entity_1.Order).save(order);
+        await this.connection.getRepository(ctx, order_entity_1.Order).save(order);
+        // Since a changed ShippingAddress could alter the activeTaxZone,
+        // we will remove any cached activeTaxZone so it can be re-calculated
+        // as needed.
+        this.requestCache.set(ctx, 'activeTaxZone', undefined);
+        return this.applyPriceAdjustments(ctx, order, order.lines);
     }
+    /**
+     * @description
+     * Returns an array of quotes stating which {@link ShippingMethod}s may be applied to this Order.
+     * This is determined by the configured {@link ShippingEligibilityChecker} of each ShippingMethod.
+     *
+     * The quote also includes a price for each method, as determined by the configured
+     * {@link ShippingCalculator} of each eligible ShippingMethod.
+     */
     async getEligibleShippingMethods(ctx, orderId) {
         const order = await this.getOrderOrThrow(ctx, orderId);
         const eligibleMethods = await this.shippingCalculator.getEligibleShippingMethods(ctx, order);
@@ -469,13 +580,22 @@ let OrderService = class OrderService {
                 name: eligible.method.name,
                 code: eligible.method.code,
                 metadata,
+                customFields: eligible.method.customFields,
             };
         });
     }
+    /**
+     * @description
+     * Returns an array of quotes stating which {@link PaymentMethod}s may be used on this Order.
+     */
     async getEligiblePaymentMethods(ctx, orderId) {
         const order = await this.getOrderOrThrow(ctx, orderId);
         return this.paymentMethodService.getEligiblePaymentMethods(ctx, order);
     }
+    /**
+     * @description
+     * Sets the ShippingMethod to be used on this Order.
+     */
     async setShippingMethod(ctx, orderId, shippingMethodId) {
         const order = await this.getOrderOrThrow(ctx, orderId);
         const validationError = this.assertAddingItemsState(order);
@@ -506,6 +626,10 @@ let OrderService = class OrderService {
         await this.applyPriceAdjustments(ctx, order);
         return this.connection.getRepository(ctx, order_entity_1.Order).save(order);
     }
+    /**
+     * @description
+     * Transitions the Order to the given state.
+     */
     async transitionToState(ctx, orderId, state) {
         const order = await this.getOrderOrThrow(ctx, orderId);
         order.payments = await this.getOrderPayments(ctx, orderId);
@@ -521,15 +645,37 @@ let OrderService = class OrderService {
         this.eventBus.publish(new order_state_transition_event_1.OrderStateTransitionEvent(fromState, state, ctx, order));
         return order;
     }
+    /**
+     * @description
+     * Transitions a Fulfillment to the given state and then transitions the Order state based on
+     * whether all Fulfillments of the Order are shipped or delivered.
+     */
     async transitionFulfillmentToState(ctx, fulfillmentId, state) {
         const result = await this.fulfillmentService.transitionToState(ctx, fulfillmentId, state);
         if (error_result_1.isGraphQlErrorResult(result)) {
             return result;
         }
         const { fulfillment, fromState, toState, orders } = result;
+        if (toState === 'Cancelled') {
+            await this.stockMovementService.createCancellationsForOrderItems(ctx, fulfillment.orderItems);
+            const lines = await this.groupOrderItemsIntoLines(ctx, fulfillment.orderItems);
+            await this.stockMovementService.createAllocationsForOrderLines(ctx, lines);
+        }
         await Promise.all(orders.map(order => this.handleFulfillmentStateTransitByOrder(ctx, order, fromState, toState)));
         return fulfillment;
     }
+    /**
+     * @description
+     * Allows the Order to be modified, which allows several aspects of the Order to be changed:
+     *
+     * * Changes to OrderLine quantities
+     * * New OrderLines being added
+     * * Arbitrary {@link Surcharge}s being added
+     * * Shipping or billing address changes
+     *
+     * Setting the `dryRun` input property to `true` will apply all changes, including updating the price of the
+     * Order, but will not actually persist any of those changes to the database.
+     */
     async modifyOrder(ctx, input) {
         await this.connection.startTransaction(ctx);
         const order = await this.getOrderOrThrow(ctx, input.orderId);
@@ -575,6 +721,12 @@ let OrderService = class OrderService {
             }
         }
     }
+    /**
+     * @description
+     * Transitions the given {@link Payment} to a new state. If the order totalWithTax price is then
+     * covered by Payments, the Order state will be automatically transitioned to `PaymentSettled`
+     * or `PaymentAuthorized`.
+     */
     async transitionPaymentToState(ctx, paymentId, state) {
         const result = await this.paymentService.transitionToState(ctx, paymentId, state);
         if (error_result_1.isGraphQlErrorResult(result)) {
@@ -587,6 +739,11 @@ let OrderService = class OrderService {
         }
         return result;
     }
+    /**
+     * @description
+     * Adds a new Payment to the Order. If the Order totalWithTax is covered by Payments, then the Order
+     * state will get automatically transitioned to the `PaymentSettled` or `PaymentAuthorized` state.
+     */
     async addPaymentToOrder(ctx, orderId, input) {
         const order = await this.getOrderOrThrow(ctx, orderId);
         if (order.state !== 'ArrangingPayment') {
@@ -619,9 +776,18 @@ let OrderService = class OrderService {
         }
         return order;
     }
+    /**
+     * @description
+     * This method is used after modifying an existing completed order using the `modifyOrder()` method. If the modifications
+     * cause the order total to increase (such as when adding a new OrderLine), then there will be an outstanding charge to
+     * pay.
+     *
+     * This method allows you to add a new Payment and assumes the actual processing has been done manually, e.g. in the
+     * dashboard of your payment provider.
+     */
     async addManualPaymentToOrder(ctx, input) {
         const order = await this.getOrderOrThrow(ctx, input.orderId);
-        if (order.state !== 'ArrangingAdditionalPayment') {
+        if (order.state !== 'ArrangingAdditionalPayment' && order.state !== 'ArrangingPayment') {
             return new generated_graphql_admin_errors_1.ManualPaymentStateError();
         }
         const existingPayments = await this.getOrderPayments(ctx, order.id);
@@ -644,6 +810,11 @@ let OrderService = class OrderService {
         }
         return order;
     }
+    /**
+     * @description
+     * Settles a payment by invoking the {@link PaymentMethodHandler}'s `settlePayment()` method. Automatically
+     * transitions the Order state if all Payments are settled.
+     */
     async settlePayment(ctx, paymentId) {
         const payment = await this.paymentService.settlePayment(ctx, paymentId);
         if (!error_result_1.isGraphQlErrorResult(payment)) {
@@ -661,6 +832,10 @@ let OrderService = class OrderService {
         }
         return payment;
     }
+    /**
+     * @description
+     * Creates a new Fulfillment associated with the given Order and OrderItems.
+     */
     async createFulfillment(ctx, input) {
         if (!input.lines || input.lines.length === 0 || shared_utils_1.summate(input.lines, 'quantity') === 0) {
             return new generated_graphql_admin_errors_1.EmptyOrderLineSelectionError();
@@ -706,6 +881,10 @@ let OrderService = class OrderService {
             }
         }
     }
+    /**
+     * @description
+     * Returns an array of all Fulfillments associated with the Order.
+     */
     async getOrderFulfillments(ctx, order) {
         var _a, _b, _c, _d;
         let lines;
@@ -724,6 +903,10 @@ let OrderService = class OrderService {
         const fulfillments = items.reduce((acc, i) => [...acc, ...(i.fulfillments || [])], []);
         return unique_1.unique(fulfillments, 'id');
     }
+    /**
+     * @description
+     * Returns an array of all Surcharges associated with the Order.
+     */
     async getOrderSurcharges(ctx, orderId) {
         const order = await this.connection.getEntityOrThrow(ctx, order_entity_1.Order, orderId, {
             channelId: ctx.channelId,
@@ -731,6 +914,11 @@ let OrderService = class OrderService {
         });
         return order.surcharges || [];
     }
+    /**
+     * @description
+     * Cancels an Order by transitioning it to the `Cancelled` state. If stock is being tracked for the ProductVariants
+     * in the Order, then new {@link StockMovement}s will be created to correct the stock levels.
+     */
     async cancelOrder(ctx, input) {
         let allOrderItemsCancelled = false;
         const cancelResult = input.lines != null
@@ -752,7 +940,7 @@ let OrderService = class OrderService {
     }
     async cancelOrderById(ctx, input) {
         const order = await this.getOrderOrThrow(ctx, input.orderId);
-        if (order.state === 'AddingItems' || order.state === 'ArrangingPayment') {
+        if (order.active) {
             return true;
         }
         else {
@@ -779,7 +967,7 @@ let OrderService = class OrderService {
         if (!utils_1.idsAreEqual(order.id, input.orderId)) {
             return new generated_graphql_admin_errors_1.MultipleOrderError();
         }
-        if (order.state === 'AddingItems' || order.state === 'ArrangingPayment') {
+        if (order.active) {
             return new generated_graphql_admin_errors_1.CancelActiveOrderError(order.state);
         }
         const fullOrder = await this.findOne(ctx, order.id);
@@ -803,6 +991,11 @@ let OrderService = class OrderService {
         });
         return order_utils_1.orderItemsAreAllCancelled(orderWithItems);
     }
+    /**
+     * @description
+     * Creates a {@link Refund} against the order and in doing so invokes the `createRefund()` method of the
+     * {@link PaymentMethodHandler}.
+     */
     async refundOrder(ctx, input) {
         if ((!input.lines || input.lines.length === 0 || shared_utils_1.summate(input.lines, 'quantity') === 0) &&
             input.shipping === 0) {
@@ -834,6 +1027,10 @@ let OrderService = class OrderService {
         }
         return await this.paymentService.createRefund(ctx, input, order, items, payment);
     }
+    /**
+     * @description
+     * Settles a Refund by transitioning it to the `Settled` state.
+     */
     async settleRefund(ctx, input) {
         const refund = await this.connection.getEntityOrThrow(ctx, refund_entity_1.Refund, input.id, {
             relations: ['payment', 'payment.order'],
@@ -846,6 +1043,10 @@ let OrderService = class OrderService {
         this.eventBus.publish(new refund_state_transition_event_1.RefundStateTransitionEvent(fromState, toState, ctx, refund, refund.payment.order));
         return refund;
     }
+    /**
+     * @description
+     * Associates a Customer with the Order.
+     */
     async addCustomerToOrder(ctx, orderId, customer) {
         const order = await this.getOrderOrThrow(ctx, orderId);
         order.customer = customer;
@@ -867,6 +1068,10 @@ let OrderService = class OrderService {
         }
         return order;
     }
+    /**
+     * @description
+     * Creates a new "ORDER_NOTE" type {@link OrderHistoryEntry} in the Order's history timeline.
+     */
     async addNoteToOrder(ctx, input) {
         const order = await this.getOrderOrThrow(ctx, input.id);
         await this.historyService.createHistoryEntryForOrder({
@@ -904,8 +1109,11 @@ let OrderService = class OrderService {
         }
     }
     /**
+     * @description
      * When a guest user with an anonymous Order signs in and has an existing Order associated with that Customer,
      * we need to reconcile the contents of the two orders.
+     *
+     * The logic used to do the merging is specified in the {@link OrderOptions} `mergeStrategy` config setting.
      */
     async mergeOrders(ctx, user, guestOrder, existingOrder) {
         if (guestOrder && guestOrder.customer) {
@@ -1012,28 +1220,31 @@ let OrderService = class OrderService {
     /**
      * Applies promotions, taxes and shipping to the Order.
      */
-    async applyPriceAdjustments(ctx, order, updatedOrderLine) {
+    async applyPriceAdjustments(ctx, order, updatedOrderLines) {
         var _a, _b;
-        if (updatedOrderLine) {
+        if (updatedOrderLines === null || updatedOrderLines === void 0 ? void 0 : updatedOrderLines.length) {
             const { orderItemPriceCalculationStrategy, changedPriceHandlingStrategy } = this.configService.orderOptions;
-            let priceResult = await orderItemPriceCalculationStrategy.calculateUnitPrice(ctx, updatedOrderLine.productVariant, updatedOrderLine.customFields || {});
-            const initialListPrice = (_b = (_a = updatedOrderLine.items.find(i => i.initialListPrice != null)) === null || _a === void 0 ? void 0 : _a.initialListPrice) !== null && _b !== void 0 ? _b : priceResult.price;
-            if (initialListPrice !== priceResult.price) {
-                priceResult = await changedPriceHandlingStrategy.handlePriceChange(ctx, priceResult, updatedOrderLine.items);
-            }
-            for (const item of updatedOrderLine.items) {
-                if (item.initialListPrice == null) {
-                    item.initialListPrice = initialListPrice;
+            for (const updatedOrderLine of updatedOrderLines) {
+                const variant = await this.productVariantService.applyChannelPriceAndTax(updatedOrderLine.productVariant, ctx, order);
+                let priceResult = await orderItemPriceCalculationStrategy.calculateUnitPrice(ctx, variant, updatedOrderLine.customFields || {});
+                const initialListPrice = (_b = (_a = updatedOrderLine.items.find(i => i.initialListPrice != null)) === null || _a === void 0 ? void 0 : _a.initialListPrice) !== null && _b !== void 0 ? _b : priceResult.price;
+                if (initialListPrice !== priceResult.price) {
+                    priceResult = await changedPriceHandlingStrategy.handlePriceChange(ctx, priceResult, updatedOrderLine.items);
                 }
-                item.listPrice = priceResult.price;
-                item.listPriceIncludesTax = priceResult.priceIncludesTax;
+                for (const item of updatedOrderLine.items) {
+                    if (item.initialListPrice == null) {
+                        item.initialListPrice = initialListPrice;
+                    }
+                    item.listPrice = priceResult.price;
+                    item.listPriceIncludesTax = priceResult.priceIncludesTax;
+                }
             }
         }
         const { items: promotions } = await this.promotionService.findAll(ctx, {
             filter: { enabled: { eq: true } },
             sort: { priorityScore: 'ASC' },
         });
-        const updatedItems = await this.orderCalculator.applyPriceAdjustments(ctx, order, promotions, updatedOrderLine ? [updatedOrderLine] : []);
+        const updatedItems = await this.orderCalculator.applyPriceAdjustments(ctx, order, promotions, updatedOrderLines !== null && updatedOrderLines !== void 0 ? updatedOrderLines : []);
         const updateFields = [
             'initialListPrice',
             'listPrice',
@@ -1104,6 +1315,28 @@ let OrderService = class OrderService {
         }
         return merged;
     }
+    async groupOrderItemsIntoLines(ctx, orderItems) {
+        const orderLineIdQuantityMap = new Map();
+        for (const item of orderItems) {
+            const quantity = orderLineIdQuantityMap.get(item.lineId);
+            if (quantity == null) {
+                orderLineIdQuantityMap.set(item.lineId, 1);
+            }
+            else {
+                orderLineIdQuantityMap.set(item.lineId, quantity + 1);
+            }
+        }
+        const orderLines = await this.connection
+            .getRepository(ctx, order_line_entity_1.OrderLine)
+            .findByIds([...orderLineIdQuantityMap.keys()], {
+            relations: ['productVariant'],
+        });
+        return orderLines.map(orderLine => ({
+            orderLine,
+            // tslint:disable-next-line:no-non-null-assertion
+            quantity: orderLineIdQuantityMap.get(orderLine.id),
+        }));
+    }
 };
 OrderService = __decorate([
     common_1.Injectable(),
@@ -1128,7 +1361,8 @@ OrderService = __decorate([
         event_bus_1.EventBus,
         channel_service_1.ChannelService,
         order_modifier_1.OrderModifier,
-        custom_field_relation_service_1.CustomFieldRelationService])
+        custom_field_relation_service_1.CustomFieldRelationService,
+        request_context_cache_service_1.RequestContextCacheService])
 ], OrderService);
 exports.OrderService = OrderService;
 //# sourceMappingURL=order.service.js.map

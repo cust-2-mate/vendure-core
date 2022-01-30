@@ -15,16 +15,23 @@ const generated_types_1 = require("@vendure/common/lib/generated-types");
 const cache_1 = require("../../cache");
 const errors_1 = require("../../common/error/errors");
 const utils_1 = require("../../common/utils");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const customer_group_entity_1 = require("../../entity/customer-group/customer-group.entity");
 const tax_category_entity_1 = require("../../entity/tax-category/tax-category.entity");
 const tax_rate_entity_1 = require("../../entity/tax-rate/tax-rate.entity");
 const zone_entity_1 = require("../../entity/zone/zone.entity");
 const event_bus_1 = require("../../event-bus/event-bus");
+const tax_rate_event_1 = require("../../event-bus/events/tax-rate-event");
 const tax_rate_modification_event_1 = require("../../event-bus/events/tax-rate-modification-event");
 const list_query_builder_1 = require("../helpers/list-query-builder/list-query-builder");
 const patch_entity_1 = require("../helpers/utils/patch-entity");
-const transactional_connection_1 = require("../transaction/transactional-connection");
 const activeTaxRatesKey = 'active-tax-rates';
+/**
+ * @description
+ * Contains methods relating to {@link TaxRate} entities.
+ *
+ * @docsCategory services
+ */
 let TaxRateService = class TaxRateService {
     constructor(connection, eventBus, listQueryBuilder, cacheService) {
         this.connection = connection;
@@ -62,6 +69,7 @@ let TaxRateService = class TaxRateService {
         const newTaxRate = await this.connection.getRepository(ctx, tax_rate_entity_1.TaxRate).save(taxRate);
         await this.updateActiveTaxRates(ctx);
         this.eventBus.publish(new tax_rate_modification_event_1.TaxRateModificationEvent(ctx, newTaxRate));
+        this.eventBus.publish(new tax_rate_event_1.TaxRateEvent(ctx, newTaxRate, 'created', input));
         return utils_1.assertFound(this.findOne(ctx, newTaxRate.id));
     }
     async update(ctx, input) {
@@ -85,12 +93,14 @@ let TaxRateService = class TaxRateService {
         // TaxRate when updating its own tax rate cache.
         await this.connection.commitOpenTransaction(ctx);
         this.eventBus.publish(new tax_rate_modification_event_1.TaxRateModificationEvent(ctx, updatedTaxRate));
+        this.eventBus.publish(new tax_rate_event_1.TaxRateEvent(ctx, updatedTaxRate, 'updated', input));
         return utils_1.assertFound(this.findOne(ctx, taxRate.id));
     }
     async delete(ctx, id) {
         const taxRate = await this.connection.getEntityOrThrow(ctx, tax_rate_entity_1.TaxRate, id);
         try {
             await this.connection.getRepository(ctx, tax_rate_entity_1.TaxRate).remove(taxRate);
+            this.eventBus.publish(new tax_rate_event_1.TaxRateEvent(ctx, taxRate, 'deleted', id));
             return {
                 result: generated_types_1.DeletionResult.DELETED,
             };
@@ -102,6 +112,11 @@ let TaxRateService = class TaxRateService {
             };
         }
     }
+    /**
+     * @description
+     * Returns the applicable TaxRate based on the specified Zone and TaxCategory. Used when calculating Order
+     * prices.
+     */
     async getApplicableTaxRate(ctx, zone, taxCategory) {
         const rate = (await this.getActiveTaxRates(ctx)).find(r => r.test(zone, taxCategory));
         return rate || this.defaultTaxRate;

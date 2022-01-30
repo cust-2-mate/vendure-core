@@ -18,6 +18,18 @@ async function validateCustomFieldValue(config, value, injector, languageCode) {
             });
         }
     }
+    if (config.list === true && Array.isArray(value)) {
+        for (const singleValue of value) {
+            validateSingleValue(config, singleValue);
+        }
+    }
+    else {
+        validateSingleValue(config, value);
+    }
+    await validateCustomFunction(config, value, injector, languageCode);
+}
+exports.validateCustomFieldValue = validateCustomFieldValue;
+function validateSingleValue(config, value) {
     switch (config.type) {
         case 'string':
         case 'localeString':
@@ -37,9 +49,7 @@ async function validateCustomFieldValue(config, value, injector, languageCode) {
         default:
             shared_utils_1.assertNever(config);
     }
-    await validateCustomFunction(config, value, injector, languageCode);
 }
-exports.validateCustomFieldValue = validateCustomFieldValue;
 async function validateCustomFunction(config, value, injector, languageCode) {
     if (typeof config.validate === 'function') {
         const error = await config.validate(value, injector);

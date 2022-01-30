@@ -1,3 +1,5 @@
+import { ProductVariantListOptions } from '@vendure/common/lib/generated-types';
+import { PaginatedList } from '@vendure/common/lib/shared-types';
 import { Translated } from '../../../common/types/locale-types';
 import { Asset } from '../../../entity/asset/asset.entity';
 import { Channel } from '../../../entity/channel/channel.entity';
@@ -25,7 +27,10 @@ export declare class ProductEntityResolver {
     name(ctx: RequestContext, product: Product): Promise<string>;
     slug(ctx: RequestContext, product: Product): Promise<string>;
     description(ctx: RequestContext, product: Product): Promise<string>;
-    variants(ctx: RequestContext, product: Product, apiType: ApiType): Promise<Array<Translated<ProductVariant>>>;
+    variants(ctx: RequestContext, product: Product): Promise<Array<Translated<ProductVariant>>>;
+    variantList(ctx: RequestContext, product: Product, args: {
+        options: ProductVariantListOptions;
+    }): Promise<PaginatedList<ProductVariant>>;
     collections(ctx: RequestContext, product: Product, apiType: ApiType): Promise<Array<Translated<Collection>>>;
     optionGroups(info: any, ctx: RequestContext, product: Product): Promise<Array<Translated<ProductOptionGroup>>>;
     facetValues(ctx: RequestContext, product: Product): Promise<Array<Translated<FacetValue>>>;

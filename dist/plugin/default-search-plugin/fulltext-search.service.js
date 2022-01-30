@@ -8,16 +8,20 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FulltextSearchService = void 0;
 const common_1 = require("@nestjs/common");
 const errors_1 = require("../../common/error/errors");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const event_bus_1 = require("../../event-bus/event-bus");
-const facet_value_service_1 = require("../../service/services/facet-value.service");
 const collection_service_1 = require("../../service/services/collection.service");
+const facet_value_service_1 = require("../../service/services/facet-value.service");
 const product_variant_service_1 = require("../../service/services/product-variant.service");
 const search_service_1 = require("../../service/services/search.service");
-const transactional_connection_1 = require("../../service/transaction/transactional-connection");
+const constants_1 = require("./constants");
 const search_index_service_1 = require("./indexer/search-index.service");
 const mysql_search_strategy_1 = require("./search-strategy/mysql-search-strategy");
 const postgres_search_strategy_1 = require("./search-strategy/postgres-search-strategy");
@@ -27,7 +31,7 @@ const sqlite_search_strategy_1 = require("./search-strategy/sqlite-search-strate
  * SearchStrategy implementations for db-specific code.
  */
 let FulltextSearchService = class FulltextSearchService {
-    constructor(connection, eventBus, facetValueService, collectionService, productVariantService, searchIndexService, searchService) {
+    constructor(connection, eventBus, facetValueService, collectionService, productVariantService, searchIndexService, searchService, options) {
         this.connection = connection;
         this.eventBus = eventBus;
         this.facetValueService = facetValueService;
@@ -35,6 +39,7 @@ let FulltextSearchService = class FulltextSearchService {
         this.productVariantService = productVariantService;
         this.searchIndexService = searchIndexService;
         this.searchService = searchService;
+        this.options = options;
         this.minTermLength = 2;
         this.searchService.adopt(this);
         this.setSearchStrategy();
@@ -90,15 +95,15 @@ let FulltextSearchService = class FulltextSearchService {
         switch (this.connection.rawConnection.options.type) {
             case 'mysql':
             case 'mariadb':
-                this.searchStrategy = new mysql_search_strategy_1.MysqlSearchStrategy(this.connection);
+                this.searchStrategy = new mysql_search_strategy_1.MysqlSearchStrategy(this.connection, this.options);
                 break;
             case 'sqlite':
             case 'sqljs':
             case 'better-sqlite3':
-                this.searchStrategy = new sqlite_search_strategy_1.SqliteSearchStrategy(this.connection);
+                this.searchStrategy = new sqlite_search_strategy_1.SqliteSearchStrategy(this.connection, this.options);
                 break;
             case 'postgres':
-                this.searchStrategy = new postgres_search_strategy_1.PostgresSearchStrategy(this.connection);
+                this.searchStrategy = new postgres_search_strategy_1.PostgresSearchStrategy(this.connection, this.options);
                 break;
             default:
                 throw new errors_1.InternalServerError(`error.database-not-supported-by-default-search-plugin`);
@@ -107,13 +112,14 @@ let FulltextSearchService = class FulltextSearchService {
 };
 FulltextSearchService = __decorate([
     common_1.Injectable(),
+    __param(7, common_1.Inject(constants_1.PLUGIN_INIT_OPTIONS)),
     __metadata("design:paramtypes", [transactional_connection_1.TransactionalConnection,
         event_bus_1.EventBus,
         facet_value_service_1.FacetValueService,
         collection_service_1.CollectionService,
         product_variant_service_1.ProductVariantService,
         search_index_service_1.SearchIndexService,
-        search_service_1.SearchService])
+        search_service_1.SearchService, Object])
 ], FulltextSearchService);
 exports.FulltextSearchService = FulltextSearchService;
 //# sourceMappingURL=fulltext-search.service.js.map

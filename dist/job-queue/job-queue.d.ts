@@ -1,4 +1,5 @@
 import { JobQueueStrategy } from '../config';
+import { JobBufferService } from './job-buffer/job-buffer.service';
 import { SubscribableJob } from './subscribable-job';
 import { CreateQueueOptions, JobConfig, JobData } from './types';
 /**
@@ -16,10 +17,11 @@ import { CreateQueueOptions, JobConfig, JobData } from './types';
 export declare class JobQueue<Data extends JobData<Data> = {}> {
     private options;
     private jobQueueStrategy;
+    private jobBufferService;
     private running;
     get name(): string;
     get started(): boolean;
-    constructor(options: CreateQueueOptions<Data>, jobQueueStrategy: JobQueueStrategy);
+    constructor(options: CreateQueueOptions<Data>, jobQueueStrategy: JobQueueStrategy, jobBufferService: JobBufferService);
     /** @internal */
     start(): Promise<void>;
     /** @internal */

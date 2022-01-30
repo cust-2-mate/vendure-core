@@ -42,4 +42,5 @@ export declare class Importer {
      * are found, the first TaxCategory id is returned.
      */
     private getMatchingTaxCategoryId;
+    private getTranslationByCodeOrFirst;
 }

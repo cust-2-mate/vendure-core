@@ -5,20 +5,18 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-var ServiceModule_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ServiceModule = exports.ServiceCoreModule = void 0;
 const common_1 = require("@nestjs/common");
-const typeorm_1 = require("@nestjs/typeorm");
 const cache_module_1 = require("../cache/cache.module");
 const config_module_1 = require("../config/config.module");
-const config_service_1 = require("../config/config.service");
-const typeorm_logger_1 = require("../config/logger/typeorm-logger");
+const connection_module_1 = require("../connection/connection.module");
 const event_bus_module_1 = require("../event-bus/event-bus.module");
 const job_queue_module_1 = require("../job-queue/job-queue.module");
 const active_order_service_1 = require("./helpers/active-order/active-order.service");
 const config_arg_service_1 = require("./helpers/config-arg/config-arg.service");
 const custom_field_relation_service_1 = require("./helpers/custom-field-relation/custom-field-relation.service");
+const entity_hydrator_service_1 = require("./helpers/entity-hydrator/entity-hydrator.service");
 const external_authentication_service_1 = require("./helpers/external-authentication/external-authentication.service");
 const fulfillment_state_machine_1 = require("./helpers/fulfillment-state-machine/fulfillment-state-machine");
 const list_query_builder_1 = require("./helpers/list-query-builder/list-query-builder");
@@ -29,6 +27,7 @@ const order_modifier_1 = require("./helpers/order-modifier/order-modifier");
 const order_state_machine_1 = require("./helpers/order-state-machine/order-state-machine");
 const password_cipher_1 = require("./helpers/password-cipher/password-cipher");
 const payment_state_machine_1 = require("./helpers/payment-state-machine/payment-state-machine");
+const product_price_applicator_1 = require("./helpers/product-price-applicator/product-price-applicator");
 const refund_state_machine_1 = require("./helpers/refund-state-machine/refund-state-machine");
 const shipping_calculator_1 = require("./helpers/shipping-calculator/shipping-calculator");
 const slug_validator_1 = require("./helpers/slug-validator/slug-validator");
@@ -67,7 +66,6 @@ const tax_category_service_1 = require("./services/tax-category.service");
 const tax_rate_service_1 = require("./services/tax-rate.service");
 const user_service_1 = require("./services/user.service");
 const zone_service_1 = require("./services/zone.service");
-const transactional_connection_1 = require("./transaction/transactional-connection");
 const services = [
     administrator_service_1.AdministratorService,
     asset_service_1.AssetService,
@@ -118,12 +116,12 @@ const helpers = [
     config_arg_service_1.ConfigArgService,
     slug_validator_1.SlugValidator,
     external_authentication_service_1.ExternalAuthenticationService,
-    transactional_connection_1.TransactionalConnection,
     custom_field_relation_service_1.CustomFieldRelationService,
     locale_string_hydrator_1.LocaleStringHydrator,
     active_order_service_1.ActiveOrderService,
+    product_price_applicator_1.ProductPriceApplicator,
+    entity_hydrator_service_1.EntityHydrator,
 ];
-let defaultTypeOrmModule;
 /**
  * The ServiceCoreModule is imported internally by the ServiceModule. It is arranged in this way so that
  * there is only a single instance of this module being instantiated, and thus the lifecycle hooks will
@@ -133,7 +131,7 @@ let ServiceCoreModule = class ServiceCoreModule {
 };
 ServiceCoreModule = __decorate([
     common_1.Module({
-        imports: [config_module_1.ConfigModule, event_bus_module_1.EventBusModule, cache_module_1.CacheModule, job_queue_module_1.JobQueueModule],
+        imports: [connection_module_1.ConnectionModule, config_module_1.ConfigModule, event_bus_module_1.EventBusModule, cache_module_1.CacheModule, job_queue_module_1.JobQueueModule],
         providers: [...services, ...helpers, initializer_service_1.InitializerService],
         exports: [...services, ...helpers],
     })
@@ -146,40 +144,9 @@ exports.ServiceCoreModule = ServiceCoreModule;
  * The exported providers are used in the ApiModule, which is responsible for parsing requests
  * into a format suitable for the service layer logic.
  */
-let ServiceModule = ServiceModule_1 = class ServiceModule {
-    static forRoot() {
-        if (!defaultTypeOrmModule) {
-            defaultTypeOrmModule = typeorm_1.TypeOrmModule.forRootAsync({
-                imports: [config_module_1.ConfigModule],
-                useFactory: (configService) => {
-                    const { dbConnectionOptions } = configService;
-                    const logger = ServiceModule_1.getTypeOrmLogger(dbConnectionOptions);
-                    return Object.assign(Object.assign({}, dbConnectionOptions), { logger });
-                },
-                inject: [config_service_1.ConfigService],
-            });
-        }
-        return {
-            module: ServiceModule_1,
-            imports: [defaultTypeOrmModule],
-        };
-    }
-    static forPlugin() {
-        return {
-            module: ServiceModule_1,
-            imports: [typeorm_1.TypeOrmModule.forFeature()],
-        };
-    }
-    static getTypeOrmLogger(dbConnectionOptions) {
-        if (!dbConnectionOptions.logger) {
-            return new typeorm_logger_1.TypeOrmLogger(dbConnectionOptions.logging);
-        }
-        else {
-            return dbConnectionOptions.logger;
-        }
-    }
+let ServiceModule = class ServiceModule {
 };
-ServiceModule = ServiceModule_1 = __decorate([
+ServiceModule = __decorate([
     common_1.Module({
         imports: [ServiceCoreModule],
         exports: [ServiceCoreModule],

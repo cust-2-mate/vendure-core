@@ -8,9 +8,11 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var DefaultSearchPlugin_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DefaultSearchPlugin = void 0;
 const operators_1 = require("rxjs/operators");
+const typeorm_1 = require("typeorm");
 const utils_1 = require("../../common/utils");
 const event_bus_1 = require("../../event-bus/event-bus");
 const asset_event_1 = require("../../event-bus/events/asset-event");
@@ -20,13 +22,17 @@ const product_event_1 = require("../../event-bus/events/product-event");
 const product_variant_channel_event_1 = require("../../event-bus/events/product-variant-channel-event");
 const product_variant_event_1 = require("../../event-bus/events/product-variant-event");
 const tax_rate_modification_event_1 = require("../../event-bus/events/tax-rate-modification-event");
+const job_queue_service_1 = require("../../job-queue/job-queue.service");
 const plugin_common_module_1 = require("../plugin-common.module");
 const vendure_plugin_1 = require("../vendure-plugin");
-const fulltext_search_resolver_1 = require("./fulltext-search.resolver");
+const api_extensions_1 = require("./api/api-extensions");
+const fulltext_search_resolver_1 = require("./api/fulltext-search.resolver");
+const constants_1 = require("./constants");
+const search_index_item_entity_1 = require("./entities/search-index-item.entity");
 const fulltext_search_service_1 = require("./fulltext-search.service");
 const indexer_controller_1 = require("./indexer/indexer.controller");
 const search_index_service_1 = require("./indexer/search-index.service");
-const search_index_item_entity_1 = require("./search-index-item.entity");
+const search_job_buffer_service_1 = require("./search-job-buffer/search-job-buffer.service");
 /**
  * @description
  * The DefaultSearchPlugin provides a full-text Product search based on the full-text searching capabilities of the
@@ -49,18 +55,29 @@ const search_index_item_entity_1 = require("./search-index-item.entity");
  * export const config: VendureConfig = {
  *   // Add an instance of the plugin to the plugins array
  *   plugins: [
- *     DefaultSearchPlugin,
+ *     DefaultSearchPlugin.init({
+ *       indexStockStatus: true,
+ *       bufferUpdates: true,
+ *     }),
  *   ],
  * };
  * ```
  *
  * @docsCategory DefaultSearchPlugin
  */
-let DefaultSearchPlugin = class DefaultSearchPlugin {
+let DefaultSearchPlugin = DefaultSearchPlugin_1 = class DefaultSearchPlugin {
     /** @internal */
-    constructor(eventBus, searchIndexService) {
+    constructor(eventBus, searchIndexService, jobQueueService) {
         this.eventBus = eventBus;
         this.searchIndexService = searchIndexService;
+        this.jobQueueService = jobQueueService;
+    }
+    static init(options) {
+        this.options = options;
+        if (options.indexStockStatus === true) {
+            this.addStockColumnsToEntity();
+        }
+        return DefaultSearchPlugin_1;
     }
     /** @internal */
     async onApplicationBootstrap() {
@@ -104,6 +121,7 @@ let DefaultSearchPlugin = class DefaultSearchPlugin {
                 return this.searchIndexService.removeVariantFromChannel(event.ctx, event.productVariant.id, event.channelId);
             }
         });
+        // TODO: Remove this buffering logic because because we have dedicated buffering based on #1137
         const collectionModification$ = this.eventBus.ofType(collection_modification_event_1.CollectionModificationEvent);
         const closingNotifier$ = collectionModification$.pipe(operators_1.debounceTime(50));
         collectionModification$
@@ -119,6 +137,7 @@ let DefaultSearchPlugin = class DefaultSearchPlugin {
             // The delay prevents a "TransactionNotStartedError" (in SQLite/sqljs) by allowing any existing
             // transactions to complete before a new job is added to the queue (assuming the SQL-based
             // JobQueueStrategy).
+            // TODO: should be able to remove owing to f0fd6625
             .pipe(operators_1.delay(1))
             .subscribe(event => {
             const defaultTaxZone = event.ctx.channel.defaultTaxZone;
@@ -127,16 +146,46 @@ let DefaultSearchPlugin = class DefaultSearchPlugin {
             }
         });
     }
+    /**
+     * If the `indexStockStatus` option is set to `true`, we dynamically add a couple of
+     * columns to the SearchIndexItem entity. This is done in this way to allow us to add
+     * support for indexing the stock status, while preventing a backwards-incompatible
+     * schema change.
+     */
+    static addStockColumnsToEntity() {
+        const instance = new search_index_item_entity_1.SearchIndexItem();
+        typeorm_1.Column({ type: 'boolean', default: true })(instance, 'inStock');
+        typeorm_1.Column({ type: 'boolean', default: true })(instance, 'productInStock');
+    }
 };
-DefaultSearchPlugin = __decorate([
+DefaultSearchPlugin.options = {};
+DefaultSearchPlugin = DefaultSearchPlugin_1 = __decorate([
     vendure_plugin_1.VendurePlugin({
         imports: [plugin_common_module_1.PluginCommonModule],
-        providers: [fulltext_search_service_1.FulltextSearchService, search_index_service_1.SearchIndexService, indexer_controller_1.IndexerController],
-        adminApiExtensions: { resolvers: [fulltext_search_resolver_1.AdminFulltextSearchResolver] },
-        shopApiExtensions: { resolvers: [fulltext_search_resolver_1.ShopFulltextSearchResolver] },
+        providers: [
+            fulltext_search_service_1.FulltextSearchService,
+            search_index_service_1.SearchIndexService,
+            indexer_controller_1.IndexerController,
+            search_job_buffer_service_1.SearchJobBufferService,
+            { provide: constants_1.PLUGIN_INIT_OPTIONS, useFactory: () => DefaultSearchPlugin_1.options },
+            {
+                provide: constants_1.BUFFER_SEARCH_INDEX_UPDATES,
+                useFactory: () => DefaultSearchPlugin_1.options.bufferUpdates === true,
+            },
+        ],
+        adminApiExtensions: {
+            schema: () => DefaultSearchPlugin_1.options.indexStockStatus === true ? api_extensions_1.stockStatusExtension : undefined,
+            resolvers: [fulltext_search_resolver_1.AdminFulltextSearchResolver],
+        },
+        shopApiExtensions: {
+            schema: () => DefaultSearchPlugin_1.options.indexStockStatus === true ? api_extensions_1.stockStatusExtension : undefined,
+            resolvers: [fulltext_search_resolver_1.ShopFulltextSearchResolver],
+        },
         entities: [search_index_item_entity_1.SearchIndexItem],
     }),
-    __metadata("design:paramtypes", [event_bus_1.EventBus, search_index_service_1.SearchIndexService])
+    __metadata("design:paramtypes", [event_bus_1.EventBus,
+        search_index_service_1.SearchIndexService,
+        job_queue_service_1.JobQueueService])
 ], DefaultSearchPlugin);
 exports.DefaultSearchPlugin = DefaultSearchPlugin;
 //# sourceMappingURL=default-search-plugin.js.map

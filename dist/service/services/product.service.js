@@ -17,18 +17,19 @@ const typeorm_1 = require("typeorm");
 const errors_1 = require("../../common/error/errors");
 const generated_graphql_admin_errors_1 = require("../../common/error/generated-graphql-admin-errors");
 const utils_1 = require("../../common/utils");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const product_option_group_entity_1 = require("../../entity/product-option-group/product-option-group.entity");
 const product_translation_entity_1 = require("../../entity/product/product-translation.entity");
 const product_entity_1 = require("../../entity/product/product.entity");
 const event_bus_1 = require("../../event-bus/event-bus");
 const product_channel_event_1 = require("../../event-bus/events/product-channel-event");
 const product_event_1 = require("../../event-bus/events/product-event");
+const product_option_group_change_event_1 = require("../../event-bus/events/product-option-group-change-event");
 const custom_field_relation_service_1 = require("../helpers/custom-field-relation/custom-field-relation.service");
 const list_query_builder_1 = require("../helpers/list-query-builder/list-query-builder");
 const slug_validator_1 = require("../helpers/slug-validator/slug-validator");
 const translatable_saver_1 = require("../helpers/translatable-saver/translatable-saver");
 const translate_entity_1 = require("../helpers/utils/translate-entity");
-const transactional_connection_1 = require("../transaction/transactional-connection");
 const asset_service_1 = require("./asset.service");
 const channel_service_1 = require("./channel.service");
 const collection_service_1 = require("./collection.service");
@@ -36,6 +37,12 @@ const facet_value_service_1 = require("./facet-value.service");
 const product_variant_service_1 = require("./product-variant.service");
 const role_service_1 = require("./role.service");
 const tax_rate_service_1 = require("./tax-rate.service");
+/**
+ * @description
+ * Contains methods relating to {@link Product} entities.
+ *
+ * @docsCategory services
+ */
 let ProductService = class ProductService {
     constructor(connection, channelService, roleService, assetService, productVariantService, facetValueService, taxRateService, collectionService, listQueryBuilder, translatableSaver, eventBus, slugValidator, customFieldRelationService) {
         this.connection = connection;
@@ -95,6 +102,10 @@ let ProductService = class ProductService {
             .getMany()
             .then(products => products.map(product => translate_entity_1.translateDeep(product, ctx.languageCode, ['facetValues', ['facetValues', 'facet']])));
     }
+    /**
+     * @description
+     * Returns all Channels to which the Product is assigned.
+     */
     async getProductChannels(ctx, productId) {
         const product = await this.connection.getEntityOrThrow(ctx, product_entity_1.Product, productId, {
             relations: ['channels'],
@@ -143,7 +154,7 @@ let ProductService = class ProductService {
             entityType: product_entity_1.Product,
             translationType: product_translation_entity_1.ProductTranslation,
             beforeSave: async (p) => {
-                this.channelService.assignToCurrentChannel(p, ctx);
+                await this.channelService.assignToCurrentChannel(p, ctx);
                 if (input.facetValueIds) {
                     p.facetValues = await this.facetValueService.findByIds(ctx, input.facetValueIds);
                 }
@@ -152,7 +163,7 @@ let ProductService = class ProductService {
         });
         await this.customFieldRelationService.updateRelations(ctx, product_entity_1.Product, input, product);
         await this.assetService.updateEntityAssets(ctx, product, input);
-        this.eventBus.publish(new product_event_1.ProductEvent(ctx, product, 'created'));
+        this.eventBus.publish(new product_event_1.ProductEvent(ctx, product, 'created', input));
         return utils_1.assertFound(this.findOne(ctx, product.id));
     }
     async update(ctx, input) {
@@ -179,7 +190,7 @@ let ProductService = class ProductService {
             },
         });
         await this.customFieldRelationService.updateRelations(ctx, product_entity_1.Product, input, updatedProduct);
-        this.eventBus.publish(new product_event_1.ProductEvent(ctx, updatedProduct, 'updated'));
+        this.eventBus.publish(new product_event_1.ProductEvent(ctx, updatedProduct, 'updated', input));
         return utils_1.assertFound(this.findOne(ctx, updatedProduct.id));
     }
     async softDelete(ctx, productId) {
@@ -189,12 +200,20 @@ let ProductService = class ProductService {
         });
         product.deletedAt = new Date();
         await this.connection.getRepository(ctx, product_entity_1.Product).save(product, { reload: false });
-        this.eventBus.publish(new product_event_1.ProductEvent(ctx, product, 'deleted'));
+        this.eventBus.publish(new product_event_1.ProductEvent(ctx, product, 'deleted', productId));
         await this.productVariantService.softDelete(ctx, product.variants.map(v => v.id));
         return {
             result: generated_types_1.DeletionResult.DELETED,
         };
     }
+    /**
+     * @description
+     * Assigns a Product to the specified Channel, and optionally uses a `priceFactor` to set the ProductVariantPrices
+     * on the new Channel.
+     *
+     * Internally, this method will also call {@link ProductVariantService} `assignProductVariantsToChannel()` for
+     * each of the Product's variants, and will assign the Product's Assets to the Channel too.
+     */
     async assignProductsToChannel(ctx, input) {
         const productsWithVariants = await this.connection
             .getRepository(ctx, product_entity_1.Product)
@@ -206,7 +225,7 @@ let ProductService = class ProductService {
             channelId: input.channelId,
             priceFactor: input.priceFactor,
         });
-        const assetIds = unique_1.unique([].concat(...productsWithVariants.map(p => p.assets.map(a => a.id))));
+        const assetIds = unique_1.unique([].concat(...productsWithVariants.map(p => p.assets.map(a => a.assetId))));
         await this.assetService.assignToChannel(ctx, { channelId: input.channelId, assetIds });
         const products = await this.connection.getRepository(ctx, product_entity_1.Product).findByIds(input.productIds);
         for (const product of products) {
@@ -245,6 +264,7 @@ let ProductService = class ProductService {
             product.optionGroups = [optionGroup];
         }
         await this.connection.getRepository(ctx, product_entity_1.Product).save(product, { reload: false });
+        this.eventBus.publish(new product_option_group_change_event_1.ProductOptionGroupChangeEvent(ctx, product, optionGroupId, 'assigned'));
         return utils_1.assertFound(this.findOne(ctx, productId));
     }
     async removeOptionGroupFromProduct(ctx, productId, optionGroupId) {
@@ -258,6 +278,7 @@ let ProductService = class ProductService {
         }
         product.optionGroups = product.optionGroups.filter(g => g.id !== optionGroupId);
         await this.connection.getRepository(ctx, product_entity_1.Product).save(product, { reload: false });
+        this.eventBus.publish(new product_option_group_change_event_1.ProductOptionGroupChangeEvent(ctx, product, optionGroupId, 'removed'));
         return utils_1.assertFound(this.findOne(ctx, productId));
     }
     async getProductWithOptionGroups(ctx, productId) {

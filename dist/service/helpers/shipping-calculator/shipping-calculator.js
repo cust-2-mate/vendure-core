@@ -24,9 +24,7 @@ let ShippingCalculator = class ShippingCalculator {
      * The `skipIds` argument is used to skip ShippingMethods with those IDs from being checked and calculated.
      */
     async getEligibleShippingMethods(ctx, order, skipIds = []) {
-        const shippingMethods = this.shippingMethodService
-            .getActiveShippingMethods(ctx.channel)
-            .filter(method => !skipIds.includes(method.id));
+        const shippingMethods = (await this.shippingMethodService.getActiveShippingMethods(ctx)).filter(method => !skipIds.includes(method.id));
         const checkEligibilityPromises = shippingMethods.map(method => this.checkEligibilityByShippingMethod(ctx, order, method));
         const eligibleMethods = await Promise.all(checkEligibilityPromises);
         return eligibleMethods.filter(shared_utils_1.notNullOrUndefined).sort((a, b) => a.result.price - b.result.price);

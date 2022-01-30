@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TaxCategory = void 0;
 const typeorm_1 = require("typeorm");
 const base_entity_1 = require("../base/base.entity");
+const custom_entity_fields_1 = require("../custom-entity-fields");
 /**
  * @description
  * A TaxCategory defines what type of taxes to apply to a {@link ProductVariant}.
@@ -31,6 +32,10 @@ __decorate([
     typeorm_1.Column({ default: false }),
     __metadata("design:type", Boolean)
 ], TaxCategory.prototype, "isDefault", void 0);
+__decorate([
+    typeorm_1.Column(type => custom_entity_fields_1.CustomTaxCategoryFields),
+    __metadata("design:type", custom_entity_fields_1.CustomTaxCategoryFields)
+], TaxCategory.prototype, "customFields", void 0);
 TaxCategory = __decorate([
     typeorm_1.Entity(),
     __metadata("design:paramtypes", [Object])

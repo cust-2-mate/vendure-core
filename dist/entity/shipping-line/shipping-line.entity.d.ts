@@ -19,6 +19,7 @@ export declare class ShippingLine extends VendureEntity {
     get taxRate(): number;
     get discounts(): Discount[];
     addAdjustment(adjustment: Adjustment): void;
+    clearAdjustments(): void;
     /**
      * @description
      * The total of all price adjustments. Will typically be a negative number due to discounts.

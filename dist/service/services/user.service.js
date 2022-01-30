@@ -14,12 +14,18 @@ const common_1 = require("@nestjs/common");
 const errors_1 = require("../../common/error/errors");
 const generated_graphql_shop_errors_1 = require("../../common/error/generated-graphql-shop-errors");
 const config_service_1 = require("../../config/config.service");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const native_authentication_method_entity_1 = require("../../entity/authentication-method/native-authentication-method.entity");
 const user_entity_1 = require("../../entity/user/user.entity");
 const password_cipher_1 = require("../helpers/password-cipher/password-cipher");
 const verification_token_generator_1 = require("../helpers/verification-token-generator/verification-token-generator");
-const transactional_connection_1 = require("../transaction/transactional-connection");
 const role_service_1 = require("./role.service");
+/**
+ * @description
+ * Contains methods relating to {@link User} entities.
+ *
+ * @docsCategory services
+ */
 let UserService = class UserService {
     constructor(connection, configService, roleService, passwordCipher, verificationTokenGenerator) {
         this.connection = connection;
@@ -42,6 +48,10 @@ let UserService = class UserService {
             relations: ['roles', 'roles.channels', 'authenticationMethods'],
         });
     }
+    /**
+     * @description
+     * Creates a new User with the special `customer` Role and using the {@link NativeAuthenticationStrategy}.
+     */
     async createCustomerUser(ctx, identifier, password) {
         const user = new user_entity_1.User();
         user.identifier = identifier;
@@ -51,6 +61,12 @@ let UserService = class UserService {
             .getRepository(ctx, user_entity_1.User)
             .save(await this.addNativeAuthenticationMethod(ctx, user, identifier, password));
     }
+    /**
+     * @description
+     * Adds a new {@link NativeAuthenticationMethod} to the User. If the {@link AuthOptions} `requireVerification`
+     * is set to `true` (as is the default), the User will be marked as unverified until the email verification
+     * flow is completed.
+     */
     async addNativeAuthenticationMethod(ctx, user, identifier, password) {
         var _a;
         const checkUser = user.id != null && (await this.getUserById(ctx, user.id));
@@ -80,6 +96,10 @@ let UserService = class UserService {
         user.authenticationMethods = [...((_a = user.authenticationMethods) !== null && _a !== void 0 ? _a : []), authenticationMethod];
         return user;
     }
+    /**
+     * @description
+     * Creates a new verified User using the {@link NativeAuthenticationStrategy}.
+     */
     async createAdminUser(ctx, identifier, password) {
         const user = new user_entity_1.User({
             identifier,
@@ -98,6 +118,11 @@ let UserService = class UserService {
         await this.connection.getEntityOrThrow(ctx, user_entity_1.User, userId);
         await this.connection.getRepository(ctx, user_entity_1.User).update({ id: userId }, { deletedAt: new Date() });
     }
+    /**
+     * @description
+     * Sets the {@link NativeAuthenticationMethod} `verificationToken` as part of the User email verification
+     * flow.
+     */
     async setVerificationToken(ctx, user) {
         const nativeAuthMethod = user.getNativeAuthenticationMethod();
         nativeAuthMethod.verificationToken = this.verificationTokenGenerator.generateVerificationToken();
@@ -105,6 +130,13 @@ let UserService = class UserService {
         await this.connection.getRepository(ctx, native_authentication_method_entity_1.NativeAuthenticationMethod).save(nativeAuthMethod);
         return this.connection.getRepository(ctx, user_entity_1.User).save(user);
     }
+    /**
+     * @description
+     * Verifies a verificationToken by looking for a User which has previously had it set using the
+     * `setVerificationToken()` method, and checks that the token is valid and has not expired.
+     *
+     * If valid, the User will be set to `verified: true`.
+     */
     async verifyUserByToken(ctx, verificationToken, password) {
         const user = await this.connection
             .getRepository(ctx, user_entity_1.User)
@@ -140,17 +172,28 @@ let UserService = class UserService {
             return new generated_graphql_shop_errors_1.VerificationTokenInvalidError();
         }
     }
+    /**
+     * @description
+     * Sets the {@link NativeAuthenticationMethod} `passwordResetToken` as part of the User password reset
+     * flow.
+     */
     async setPasswordResetToken(ctx, emailAddress) {
         const user = await this.getUserByEmailAddress(ctx, emailAddress);
         if (!user) {
             return;
         }
         const nativeAuthMethod = user.getNativeAuthenticationMethod();
-        nativeAuthMethod.passwordResetToken =
-            await this.verificationTokenGenerator.generateVerificationToken();
+        nativeAuthMethod.passwordResetToken = this.verificationTokenGenerator.generateVerificationToken();
         await this.connection.getRepository(ctx, native_authentication_method_entity_1.NativeAuthenticationMethod).save(nativeAuthMethod);
         return user;
     }
+    /**
+     * @description
+     * Verifies a passwordResetToken by looking for a User which has previously had it set using the
+     * `setPasswordResetToken()` method, and checks that the token is valid and has not expired.
+     *
+     * If valid, the User's credentials will be updated with the new password.
+     */
     async resetPasswordByToken(ctx, passwordResetToken, password) {
         const user = await this.connection
             .getRepository(ctx, user_entity_1.User)
@@ -173,6 +216,7 @@ let UserService = class UserService {
         }
     }
     /**
+     * @description
      * Changes the User identifier without an email verification step, so this should be only used when
      * an Administrator is setting a new email address.
      */
@@ -197,8 +241,20 @@ let UserService = class UserService {
         await this.connection.getRepository(ctx, user_entity_1.User).save(user, { reload: false });
     }
     /**
+     * @description
+     * Sets the {@link NativeAuthenticationMethod} `identifierChangeToken` as part of the User email address change
+     * flow.
+     */
+    async setIdentifierChangeToken(ctx, user) {
+        const nativeAuthMethod = user.getNativeAuthenticationMethod();
+        nativeAuthMethod.identifierChangeToken = this.verificationTokenGenerator.generateVerificationToken();
+        await this.connection.getRepository(ctx, native_authentication_method_entity_1.NativeAuthenticationMethod).save(nativeAuthMethod);
+        return user;
+    }
+    /**
+     * @description
      * Changes the User identifier as part of the storefront flow used by Customers to set a
-     * new email address.
+     * new email address, with the token previously set using the `setIdentifierChangeToken()` method.
      */
     async changeIdentifierByToken(ctx, token) {
         const user = await this.connection
@@ -231,6 +287,10 @@ let UserService = class UserService {
         await this.connection.getRepository(ctx, user_entity_1.User).save(user, { reload: false });
         return { user, oldIdentifier };
     }
+    /**
+     * @description
+     * Updates the password for a User with the {@link NativeAuthenticationMethod}.
+     */
     async updatePassword(ctx, userId, currentPassword, newPassword) {
         const user = await this.connection
             .getRepository(ctx, user_entity_1.User)
@@ -252,12 +312,6 @@ let UserService = class UserService {
             .getRepository(ctx, native_authentication_method_entity_1.NativeAuthenticationMethod)
             .save(nativeAuthMethod, { reload: false });
         return true;
-    }
-    async setIdentifierChangeToken(ctx, user) {
-        const nativeAuthMethod = user.getNativeAuthenticationMethod();
-        nativeAuthMethod.identifierChangeToken = this.verificationTokenGenerator.generateVerificationToken();
-        await this.connection.getRepository(ctx, native_authentication_method_entity_1.NativeAuthenticationMethod).save(nativeAuthMethod);
-        return user;
     }
 };
 UserService = __decorate([

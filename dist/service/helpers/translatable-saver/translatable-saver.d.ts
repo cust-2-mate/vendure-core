@@ -1,8 +1,8 @@
 import { ID, Type } from '@vendure/common/lib/shared-types';
 import { RequestContext } from '../../../api/common/request-context';
 import { Translatable, TranslatedInput, Translation } from '../../../common/types/locale-types';
+import { TransactionalConnection } from '../../../connection/transactional-connection';
 import { VendureEntity } from '../../../entity/base/base.entity';
-import { TransactionalConnection } from '../../transaction/transactional-connection';
 export interface CreateTranslatableOptions<T extends Translatable> {
     ctx: RequestContext;
     entityType: Type<T>;

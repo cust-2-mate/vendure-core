@@ -9,6 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DataImportModule = void 0;
 const common_1 = require("@nestjs/common");
 const config_module_1 = require("../config/config.module");
+const connection_module_1 = require("../connection/connection.module");
 const plugin_module_1 = require("../plugin/plugin.module");
 const service_module_1 = require("../service/service.module");
 const asset_importer_1 = require("./providers/asset-importer/asset-importer");
@@ -23,7 +24,7 @@ DataImportModule = __decorate([
         // Important! PluginModule must be defined before ServiceModule
         // in order that overrides of Services (e.g. SearchService) are correctly
         // registered with the injector.
-        imports: [plugin_module_1.PluginModule.forRoot(), service_module_1.ServiceModule.forRoot(), config_module_1.ConfigModule],
+        imports: [plugin_module_1.PluginModule.forRoot(), service_module_1.ServiceModule, connection_module_1.ConnectionModule.forRoot(), config_module_1.ConfigModule],
         exports: [import_parser_1.ImportParser, importer_1.Importer, populator_1.Populator, fast_importer_service_1.FastImporterService, asset_importer_1.AssetImporter],
         providers: [import_parser_1.ImportParser, importer_1.Importer, populator_1.Populator, fast_importer_service_1.FastImporterService, asset_importer_1.AssetImporter],
     })

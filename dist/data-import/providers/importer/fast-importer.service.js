@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.FastImporterService = void 0;
 const common_1 = require("@nestjs/common");
 const request_context_1 = require("../../../api/common/request-context");
+const transactional_connection_1 = require("../../../connection/transactional-connection");
 const product_option_group_translation_entity_1 = require("../../../entity/product-option-group/product-option-group-translation.entity");
 const product_option_group_entity_1 = require("../../../entity/product-option-group/product-option-group.entity");
 const product_option_translation_entity_1 = require("../../../entity/product-option/product-option-translation.entity");
@@ -26,7 +27,6 @@ const product_entity_1 = require("../../../entity/product/product.entity");
 const translatable_saver_1 = require("../../../service/helpers/translatable-saver/translatable-saver");
 const channel_service_1 = require("../../../service/services/channel.service");
 const stock_movement_service_1 = require("../../../service/services/stock-movement.service");
-const transactional_connection_1 = require("../../../service/transaction/transactional-connection");
 /**
  * A service to import entities into the database. This replaces the regular `create` methods of the service layer with faster
  * versions which skip much of the defensive checks and other DB calls which are not needed when running an import.
@@ -41,7 +41,7 @@ let FastImporterService = class FastImporterService {
         this.translatableSaver = translatableSaver;
     }
     async initialize() {
-        this.defaultChannel = this.channelService.getDefaultChannel();
+        this.defaultChannel = await this.channelService.getDefaultChannel();
     }
     async createProduct(input) {
         const product = await this.translatableSaver.create({

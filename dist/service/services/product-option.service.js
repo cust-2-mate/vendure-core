@@ -12,18 +12,27 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProductOptionService = void 0;
 const common_1 = require("@nestjs/common");
 const utils_1 = require("../../common/utils");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const product_option_group_entity_1 = require("../../entity/product-option-group/product-option-group.entity");
 const product_option_translation_entity_1 = require("../../entity/product-option/product-option-translation.entity");
 const product_option_entity_1 = require("../../entity/product-option/product-option.entity");
+const event_bus_1 = require("../../event-bus");
+const product_option_event_1 = require("../../event-bus/events/product-option-event");
 const custom_field_relation_service_1 = require("../helpers/custom-field-relation/custom-field-relation.service");
 const translatable_saver_1 = require("../helpers/translatable-saver/translatable-saver");
 const translate_entity_1 = require("../helpers/utils/translate-entity");
-const transactional_connection_1 = require("../transaction/transactional-connection");
+/**
+ * @description
+ * Contains methods relating to {@link ProductOption} entities.
+ *
+ * @docsCategory services
+ */
 let ProductOptionService = class ProductOptionService {
-    constructor(connection, translatableSaver, customFieldRelationService) {
+    constructor(connection, translatableSaver, customFieldRelationService, eventBus) {
         this.connection = connection;
         this.translatableSaver = translatableSaver;
         this.customFieldRelationService = customFieldRelationService;
+        this.eventBus = eventBus;
     }
     findAll(ctx) {
         return this.connection
@@ -52,7 +61,8 @@ let ProductOptionService = class ProductOptionService {
             translationType: product_option_translation_entity_1.ProductOptionTranslation,
             beforeSave: po => (po.group = productOptionGroup),
         });
-        await this.customFieldRelationService.updateRelations(ctx, product_option_entity_1.ProductOption, input, option);
+        const optionWithRelations = await this.customFieldRelationService.updateRelations(ctx, product_option_entity_1.ProductOption, input, option);
+        this.eventBus.publish(new product_option_event_1.ProductOptionEvent(ctx, optionWithRelations, 'created', input));
         return utils_1.assertFound(this.findOne(ctx, option.id));
     }
     async update(ctx, input) {
@@ -63,6 +73,7 @@ let ProductOptionService = class ProductOptionService {
             translationType: product_option_translation_entity_1.ProductOptionTranslation,
         });
         await this.customFieldRelationService.updateRelations(ctx, product_option_entity_1.ProductOption, input, option);
+        this.eventBus.publish(new product_option_event_1.ProductOptionEvent(ctx, option, 'updated', input));
         return utils_1.assertFound(this.findOne(ctx, option.id));
     }
 };
@@ -70,7 +81,8 @@ ProductOptionService = __decorate([
     common_1.Injectable(),
     __metadata("design:paramtypes", [transactional_connection_1.TransactionalConnection,
         translatable_saver_1.TranslatableSaver,
-        custom_field_relation_service_1.CustomFieldRelationService])
+        custom_field_relation_service_1.CustomFieldRelationService,
+        event_bus_1.EventBus])
 ], ProductOptionService);
 exports.ProductOptionService = ProductOptionService;
 //# sourceMappingURL=product-option.service.js.map

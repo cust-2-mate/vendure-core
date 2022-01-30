@@ -24,7 +24,7 @@ let TaxCategoryResolver = class TaxCategoryResolver {
     constructor(taxCategoryService) {
         this.taxCategoryService = taxCategoryService;
     }
-    taxCategories(ctx) {
+    async taxCategories(ctx) {
         return this.taxCategoryService.findAll(ctx);
     }
     async taxCategory(ctx, args) {
@@ -42,7 +42,7 @@ let TaxCategoryResolver = class TaxCategoryResolver {
 };
 __decorate([
     graphql_1.Query(),
-    allow_decorator_1.Allow(generated_types_1.Permission.ReadSettings, generated_types_1.Permission.ReadCatalog, generated_types_1.Permission.ReadTaxCategory),
+    allow_decorator_1.Allow(generated_types_1.Permission.ReadSettings, generated_types_1.Permission.ReadCatalog, generated_types_1.Permission.ReadProduct, generated_types_1.Permission.ReadTaxCategory),
     __param(0, request_context_decorator_1.Ctx()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [request_context_1.RequestContext]),

@@ -9,14 +9,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.JobQueueModule = void 0;
 const common_1 = require("@nestjs/common");
 const config_module_1 = require("../config/config.module");
+const job_buffer_service_1 = require("./job-buffer/job-buffer.service");
 const job_queue_service_1 = require("./job-queue.service");
 let JobQueueModule = class JobQueueModule {
 };
 JobQueueModule = __decorate([
     common_1.Module({
         imports: [config_module_1.ConfigModule],
-        providers: [job_queue_service_1.JobQueueService],
-        exports: [job_queue_service_1.JobQueueService],
+        providers: [job_queue_service_1.JobQueueService, job_buffer_service_1.JobBufferService],
+        exports: [job_queue_service_1.JobQueueService, job_buffer_service_1.JobBufferService],
     })
 ], JobQueueModule);
 exports.JobQueueModule = JobQueueModule;

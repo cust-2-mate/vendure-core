@@ -12,6 +12,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.NativeAuthenticationMethod = void 0;
 const typeorm_1 = require("typeorm");
 const authentication_method_entity_1 = require("./authentication-method.entity");
+/**
+ * @description
+ * This is the default, built-in authentication method which uses a identifier (typically username or email address)
+ * and password combination to authenticate a User.
+ *
+ * @docsCategory entities
+ * @docsPage AuthenticationMethod
+ */
 let NativeAuthenticationMethod = class NativeAuthenticationMethod extends authentication_method_entity_1.AuthenticationMethod {
     constructor(input) {
         super(input);

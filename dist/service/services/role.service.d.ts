@@ -3,28 +3,46 @@ import { ID, PaginatedList } from '@vendure/common/lib/shared-types';
 import { RequestContext } from '../../api/common/request-context';
 import { ListQueryOptions } from '../../common/types/common-types';
 import { ConfigService } from '../../config/config.service';
+import { TransactionalConnection } from '../../connection/transactional-connection';
 import { Channel } from '../../entity/channel/channel.entity';
 import { Role } from '../../entity/role/role.entity';
+import { EventBus } from '../../event-bus';
 import { ListQueryBuilder } from '../helpers/list-query-builder/list-query-builder';
-import { TransactionalConnection } from '../transaction/transactional-connection';
 import { ChannelService } from './channel.service';
+/**
+ * @description
+ * Contains methods relating to {@link Role} entities.
+ *
+ * @docsCategory services
+ */
 export declare class RoleService {
     private connection;
     private channelService;
     private listQueryBuilder;
     private configService;
-    constructor(connection: TransactionalConnection, channelService: ChannelService, listQueryBuilder: ListQueryBuilder, configService: ConfigService);
+    private eventBus;
+    constructor(connection: TransactionalConnection, channelService: ChannelService, listQueryBuilder: ListQueryBuilder, configService: ConfigService, eventBus: EventBus);
     initRoles(): Promise<void>;
     findAll(ctx: RequestContext, options?: ListQueryOptions<Role>): Promise<PaginatedList<Role>>;
     findOne(ctx: RequestContext, roleId: ID): Promise<Role | undefined>;
     getChannelsForRole(ctx: RequestContext, roleId: ID): Promise<Channel[]>;
+    /**
+     * @description
+     * Returns the special SuperAdmin Role, which always exists in Vendure.
+     */
     getSuperAdminRole(): Promise<Role>;
+    /**
+     * @description
+     * Returns the special Customer Role, which always exists in Vendure.
+     */
     getCustomerRole(): Promise<Role>;
     /**
+     * @description
      * Returns all the valid Permission values
      */
     getAllPermissions(): string[];
     /**
+     * @description
      * Returns true if the User has the specified permission on that Channel
      */
     userHasPermissionOnChannel(ctx: RequestContext, channelId: ID, permission: Permission): Promise<boolean>;

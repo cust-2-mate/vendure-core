@@ -4,9 +4,11 @@ exports.defaultConfig = void 0;
 const generated_types_1 = require("@vendure/common/lib/generated-types");
 const shared_constants_1 = require("@vendure/common/lib/shared-constants");
 const in_memory_job_queue_strategy_1 = require("../job-queue/in-memory-job-queue-strategy");
+const in_memory_job_buffer_storage_strategy_1 = require("../job-queue/job-buffer/in-memory-job-buffer-storage-strategy");
 const default_asset_naming_strategy_1 = require("./asset-naming-strategy/default-asset-naming-strategy");
 const no_asset_preview_strategy_1 = require("./asset-preview-strategy/no-asset-preview-strategy");
 const no_asset_storage_strategy_1 = require("./asset-storage-strategy/no-asset-storage-strategy");
+const bcrypt_password_hashing_strategy_1 = require("./auth/bcrypt-password-hashing-strategy");
 const native_authentication_strategy_1 = require("./auth/native-authentication-strategy");
 const default_collection_filters_1 = require("./catalog/default-collection-filters");
 const default_product_variant_price_calculation_strategy_1 = require("./catalog/default-product-variant-price-calculation-strategy");
@@ -79,6 +81,7 @@ exports.defaultConfig = {
         shopAuthenticationStrategy: [new native_authentication_strategy_1.NativeAuthenticationStrategy()],
         adminAuthenticationStrategy: [new native_authentication_strategy_1.NativeAuthenticationStrategy()],
         customPermissions: [],
+        passwordHashingStrategy: new bcrypt_password_hashing_strategy_1.BcryptPasswordHashingStrategy(),
     },
     catalogOptions: {
         collectionFilters: default_collection_filters_1.defaultCollectionFilters,
@@ -96,6 +99,10 @@ exports.defaultConfig = {
     dbConnectionOptions: {
         timezone: 'Z',
         type: 'mysql',
+    },
+    entityOptions: {
+        channelCacheTtl: 30000,
+        zoneCacheTtl: 30000,
     },
     promotionOptions: {
         promotionConditions: promotion_1.defaultPromotionConditions,
@@ -134,7 +141,9 @@ exports.defaultConfig = {
     },
     jobQueueOptions: {
         jobQueueStrategy: new in_memory_job_queue_strategy_1.InMemoryJobQueueStrategy(),
+        jobBufferStorageStrategy: new in_memory_job_buffer_storage_strategy_1.InMemoryJobBufferStorageStrategy(),
         activeQueues: [],
+        enableWorkerHealthCheck: false,
     },
     customFields: {
         Address: [],
@@ -142,19 +151,26 @@ exports.defaultConfig = {
         Asset: [],
         Channel: [],
         Collection: [],
+        Country: [],
         Customer: [],
+        CustomerGroup: [],
         Facet: [],
         FacetValue: [],
         Fulfillment: [],
         GlobalSettings: [],
         Order: [],
         OrderLine: [],
+        PaymentMethod: [],
         Product: [],
         ProductOption: [],
         ProductOptionGroup: [],
         ProductVariant: [],
-        User: [],
+        Promotion: [],
         ShippingMethod: [],
+        TaxCategory: [],
+        TaxRate: [],
+        User: [],
+        Zone: [],
     },
     plugins: [],
 };

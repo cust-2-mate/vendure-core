@@ -6,6 +6,8 @@ interface CustomField {
     description: [LocalizedString!]
     readonly: Boolean
     internal: Boolean
+    nullable: Boolean
+    ui: JSON
 }
 
 type StringCustomFieldConfig implements CustomField {
@@ -17,8 +19,10 @@ type StringCustomFieldConfig implements CustomField {
     description: [LocalizedString!]
     readonly: Boolean
     internal: Boolean
+    nullable: Boolean
     pattern: String
     options: [StringFieldOption!]
+    ui: JSON
 }
 
 type StringFieldOption {
@@ -35,7 +39,9 @@ type LocaleStringCustomFieldConfig implements CustomField {
     description: [LocalizedString!]
     readonly: Boolean
     internal: Boolean
+    nullable: Boolean
     pattern: String
+    ui: JSON
 }
 type IntCustomFieldConfig implements CustomField {
     name: String!
@@ -45,9 +51,11 @@ type IntCustomFieldConfig implements CustomField {
     description: [LocalizedString!]
     readonly: Boolean
     internal: Boolean
+    nullable: Boolean
     min: Int
     max: Int
     step: Int
+    ui: JSON
 }
 type FloatCustomFieldConfig implements CustomField {
     name: String!
@@ -57,9 +65,11 @@ type FloatCustomFieldConfig implements CustomField {
     description: [LocalizedString!]
     readonly: Boolean
     internal: Boolean
+    nullable: Boolean
     min: Float
     max: Float
     step: Float
+    ui: JSON
 }
 type BooleanCustomFieldConfig implements CustomField {
     name: String!
@@ -69,6 +79,8 @@ type BooleanCustomFieldConfig implements CustomField {
     description: [LocalizedString!]
     readonly: Boolean
     internal: Boolean
+    nullable: Boolean
+    ui: JSON
 }
 """
 Expects the same validation formats as the `<input type="datetime-local">` HTML element.
@@ -82,9 +94,11 @@ type DateTimeCustomFieldConfig implements CustomField {
     description: [LocalizedString!]
     readonly: Boolean
     internal: Boolean
+    nullable: Boolean
     min: String
     max: String
     step: Int
+    ui: JSON
 }
 
 type RelationCustomFieldConfig implements CustomField {
@@ -95,8 +109,10 @@ type RelationCustomFieldConfig implements CustomField {
     description: [LocalizedString!]
     readonly: Boolean
     internal: Boolean
+    nullable: Boolean
     entity: String!
     scalarFields: [String!]!
+    ui: JSON
 }
 
 type TextCustomFieldConfig implements CustomField {
@@ -107,6 +123,8 @@ type TextCustomFieldConfig implements CustomField {
     description: [LocalizedString!]
     readonly: Boolean
     internal: Boolean
+    nullable: Boolean
+    ui: JSON
 }
 
 type LocalizedString {

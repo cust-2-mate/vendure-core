@@ -17,14 +17,20 @@ const common_1 = require("@nestjs/common");
 const crypto_1 = __importDefault(require("crypto"));
 const ms_1 = __importDefault(require("ms"));
 const config_service_1 = require("../../config/config.service");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const channel_entity_1 = require("../../entity/channel/channel.entity");
 const role_entity_1 = require("../../entity/role/role.entity");
 const anonymous_session_entity_1 = require("../../entity/session/anonymous-session.entity");
 const authenticated_session_entity_1 = require("../../entity/session/authenticated-session.entity");
 const session_entity_1 = require("../../entity/session/session.entity");
 const get_user_channels_permissions_1 = require("../helpers/utils/get-user-channels-permissions");
-const transactional_connection_1 = require("../transaction/transactional-connection");
 const order_service_1 = require("./order.service");
+/**
+ * @description
+ * Contains methods relating to {@link Session} entities.
+ *
+ * @docsCategory services
+ */
 let SessionService = class SessionService {
     constructor(connection, configService, orderService) {
         this.connection = connection;
@@ -36,12 +42,15 @@ let SessionService = class SessionService {
         // the injection on dependencies. See https://docs.nestjs.com/techniques/database#subscribers
         this.connection.rawConnection.subscribers.push(this);
     }
+    /** @internal */
     afterInsert(event) {
         this.clearSessionCacheOnDataChange(event);
     }
+    /** @internal */
     afterRemove(event) {
         this.clearSessionCacheOnDataChange(event);
     }
+    /** @internal */
     afterUpdate(event) {
         this.clearSessionCacheOnDataChange(event);
     }
@@ -55,6 +64,10 @@ let SessionService = class SessionService {
             }
         }
     }
+    /**
+     * @description
+     * Creates a new {@link AuthenticatedSession}. To be used after successful authentication.
+     */
     async createNewAuthenticatedSession(ctx, user, authenticationStrategyName) {
         const token = await this.generateSessionToken();
         const guestOrder = ctx.session && ctx.session.activeOrderId
@@ -74,7 +87,9 @@ let SessionService = class SessionService {
         return authenticatedSession;
     }
     /**
-     * Create an anonymous session.
+     * @description
+     * Create an {@link AnonymousSession} and caches it using the configured {@link SessionCacheStrategy},
+     * and returns the cached session object.
      */
     async createAnonymousSession() {
         const token = await this.generateSessionToken();
@@ -90,6 +105,10 @@ let SessionService = class SessionService {
         await this.sessionCacheStrategy.set(serializedSession);
         return serializedSession;
     }
+    /**
+     * @description
+     * Returns the cached session object matching the given session token.
+     */
     async getSessionFromToken(sessionToken) {
         let serializedSession = await this.sessionCacheStrategy.get(sessionToken);
         const stale = !!(serializedSession && serializedSession.cacheExpiry < new Date().getTime() / 1000);
@@ -107,6 +126,10 @@ let SessionService = class SessionService {
         }
         return serializedSession;
     }
+    /**
+     * @description
+     * Serializes a {@link Session} instance into a simplified plain object suitable for caching.
+     */
     serializeSession(session) {
         const expiry = Math.floor(new Date().getTime() / 1000) + this.configService.authOptions.sessionCacheTTL;
         const serializedSession = {
@@ -147,6 +170,10 @@ let SessionService = class SessionService {
             return session;
         }
     }
+    /**
+     * @description
+     * Sets the `activeOrder` on the given cached session object and updates the cache.
+     */
     async setActiveOrder(ctx, serializedSession, order) {
         const session = await this.connection
             .getRepository(session_entity_1.Session)
@@ -160,6 +187,10 @@ let SessionService = class SessionService {
         }
         return serializedSession;
     }
+    /**
+     * @description
+     * Clears the `activeOrder` on the given cached session object and updates the cache.
+     */
     async unsetActiveOrder(ctx, serializedSession) {
         if (serializedSession.activeOrderId) {
             const session = await this.connection
@@ -175,6 +206,10 @@ let SessionService = class SessionService {
         }
         return serializedSession;
     }
+    /**
+     * @description
+     * Sets the `activeChannel` on the given cached session object and updates the cache.
+     */
     async setActiveChannel(serializedSession, channel) {
         const session = await this.connection
             .getRepository(session_entity_1.Session)
@@ -189,6 +224,7 @@ let SessionService = class SessionService {
         return serializedSession;
     }
     /**
+     * @description
      * Deletes all existing sessions for the given user.
      */
     async deleteSessionsByUser(ctx, user) {
@@ -201,6 +237,7 @@ let SessionService = class SessionService {
         }
     }
     /**
+     * @description
      * Deletes all existing sessions with the given activeOrder.
      */
     async deleteSessionsByActiveOrderId(ctx, activeOrderId) {

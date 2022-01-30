@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TranslatableSaver = void 0;
 const common_1 = require("@nestjs/common");
 const omit_1 = require("@vendure/common/lib/omit");
-const transactional_connection_1 = require("../../transaction/transactional-connection");
+const transactional_connection_1 = require("../../../connection/transactional-connection");
 const patch_entity_1 = require("../utils/patch-entity");
 const translation_differ_1 = require("./translation-differ");
 /**

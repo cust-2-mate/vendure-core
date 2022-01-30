@@ -17,13 +17,20 @@ const shared_constants_1 = require("@vendure/common/lib/shared-constants");
 const errors_1 = require("../../common/error/errors");
 const utils_1 = require("../../common/utils");
 const config_service_1 = require("../../config/config.service");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const payment_method_entity_1 = require("../../entity/payment-method/payment-method.entity");
 const event_bus_1 = require("../../event-bus/event-bus");
+const payment_method_event_1 = require("../../event-bus/events/payment-method-event");
 const config_arg_service_1 = require("../helpers/config-arg/config-arg.service");
 const list_query_builder_1 = require("../helpers/list-query-builder/list-query-builder");
 const patch_entity_1 = require("../helpers/utils/patch-entity");
-const transactional_connection_1 = require("../transaction/transactional-connection");
 const channel_service_1 = require("./channel.service");
+/**
+ * @description
+ * Contains methods relating to {@link PaymentMethod} entities.
+ *
+ * @docsCategory services
+ */
 let PaymentMethodService = class PaymentMethodService {
     constructor(connection, configService, listQueryBuilder, eventBus, configArgService, channelService) {
         this.connection = connection;
@@ -51,8 +58,12 @@ let PaymentMethodService = class PaymentMethodService {
         if (input.checker) {
             paymentMethod.checker = this.configArgService.parseInput('PaymentMethodEligibilityChecker', input.checker);
         }
-        this.channelService.assignToCurrentChannel(paymentMethod, ctx);
-        return this.connection.getRepository(ctx, payment_method_entity_1.PaymentMethod).save(paymentMethod);
+        await this.channelService.assignToCurrentChannel(paymentMethod, ctx);
+        const savedPaymentMethod = await this.connection
+            .getRepository(ctx, payment_method_entity_1.PaymentMethod)
+            .save(paymentMethod);
+        this.eventBus.publish(new payment_method_event_1.PaymentMethodEvent(ctx, savedPaymentMethod, 'created', input));
+        return savedPaymentMethod;
     }
     async update(ctx, input) {
         const paymentMethod = await this.connection.getEntityOrThrow(ctx, payment_method_entity_1.PaymentMethod, input.id);
@@ -66,6 +77,7 @@ let PaymentMethodService = class PaymentMethodService {
         if (input.handler) {
             paymentMethod.handler = this.configArgService.parseInput('PaymentMethodHandler', input.handler);
         }
+        this.eventBus.publish(new payment_method_event_1.PaymentMethodEvent(ctx, paymentMethod, 'updated', input));
         return this.connection.getRepository(ctx, payment_method_entity_1.PaymentMethod).save(updatedPaymentMethod);
     }
     async delete(ctx, paymentMethodId, force = false) {
@@ -84,6 +96,7 @@ let PaymentMethodService = class PaymentMethodService {
             }
             try {
                 await this.connection.getRepository(ctx, payment_method_entity_1.PaymentMethod).remove(paymentMethod);
+                this.eventBus.publish(new payment_method_event_1.PaymentMethodEvent(ctx, paymentMethod, 'deleted', paymentMethodId));
                 return {
                     result: generated_types_1.DeletionResult.DELETED,
                 };
@@ -100,6 +113,7 @@ let PaymentMethodService = class PaymentMethodService {
             // but will remove from the current channel
             paymentMethod.channels = paymentMethod.channels.filter(c => !utils_1.idsAreEqual(c.id, ctx.channelId));
             await this.connection.getRepository(ctx, payment_method_entity_1.PaymentMethod).save(paymentMethod);
+            this.eventBus.publish(new payment_method_event_1.PaymentMethodEvent(ctx, paymentMethod, 'deleted', paymentMethodId));
             return {
                 result: generated_types_1.DeletionResult.DELETED,
             };
@@ -137,6 +151,7 @@ let PaymentMethodService = class PaymentMethodService {
                 description: method.description,
                 isEligible,
                 eligibilityMessage,
+                customFields: method.customFields,
             });
         }
         return results;

@@ -1,7 +1,10 @@
 import { OnApplicationBootstrap } from '@nestjs/common';
 import { SearchReindexResponse } from '@vendure/common/lib/generated-types';
+import { Type } from '@vendure/common/lib/shared-types';
 import { EventBus } from '../../event-bus/event-bus';
+import { JobQueueService } from '../../job-queue/job-queue.service';
 import { SearchIndexService } from './indexer/search-index.service';
+import { DefaultSearchPluginInitOptions } from './types';
 export interface DefaultSearchReindexResponse extends SearchReindexResponse {
     timeTaken: number;
     indexedItemCount: number;
@@ -28,7 +31,10 @@ export interface DefaultSearchReindexResponse extends SearchReindexResponse {
  * export const config: VendureConfig = {
  *   // Add an instance of the plugin to the plugins array
  *   plugins: [
- *     DefaultSearchPlugin,
+ *     DefaultSearchPlugin.init({
+ *       indexStockStatus: true,
+ *       bufferUpdates: true,
+ *     }),
  *   ],
  * };
  * ```
@@ -38,8 +44,18 @@ export interface DefaultSearchReindexResponse extends SearchReindexResponse {
 export declare class DefaultSearchPlugin implements OnApplicationBootstrap {
     private eventBus;
     private searchIndexService;
+    private jobQueueService;
+    static options: DefaultSearchPluginInitOptions;
     /** @internal */
-    constructor(eventBus: EventBus, searchIndexService: SearchIndexService);
+    constructor(eventBus: EventBus, searchIndexService: SearchIndexService, jobQueueService: JobQueueService);
+    static init(options: DefaultSearchPluginInitOptions): Type<DefaultSearchPlugin>;
     /** @internal */
     onApplicationBootstrap(): Promise<void>;
+    /**
+     * If the `indexStockStatus` option is set to `true`, we dynamically add a couple of
+     * columns to the SearchIndexItem entity. This is done in this way to allow us to add
+     * support for indexing the stock status, while preventing a backwards-incompatible
+     * schema change.
+     */
+    private static addStockColumnsToEntity;
 }

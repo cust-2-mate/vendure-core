@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.InitializerService = void 0;
 const common_1 = require("@nestjs/common");
 const vendure_logger_1 = require("../config/logger/vendure-logger");
+const transactional_connection_1 = require("../connection/transactional-connection");
 const administrator_entity_1 = require("../entity/administrator/administrator.entity");
 const administrator_service_1 = require("./services/administrator.service");
 const channel_service_1 = require("./services/channel.service");
@@ -19,7 +20,6 @@ const global_settings_service_1 = require("./services/global-settings.service");
 const role_service_1 = require("./services/role.service");
 const shipping_method_service_1 = require("./services/shipping-method.service");
 const zone_service_1 = require("./services/zone.service");
-const transactional_connection_1 = require("./transaction/transactional-connection");
 /**
  * Only used internally to run the various service init methods in the correct
  * sequence on bootstrap.

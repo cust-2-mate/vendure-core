@@ -10,8 +10,10 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-__exportStar(require("./default-search-plugin/default-search-plugin"), exports);
+__exportStar(require("./default-search-plugin/index"), exports);
 __exportStar(require("./default-job-queue-plugin/default-job-queue-plugin"), exports);
+__exportStar(require("./default-job-queue-plugin/job-record-buffer.entity"), exports);
+__exportStar(require("./default-job-queue-plugin/sql-job-buffer-storage-strategy"), exports);
 __exportStar(require("./vendure-plugin"), exports);
 __exportStar(require("./plugin-common.module"), exports);
 __exportStar(require("./plugin-utils"), exports);

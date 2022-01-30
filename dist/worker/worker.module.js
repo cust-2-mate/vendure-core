@@ -10,6 +10,7 @@ exports.WorkerModule = void 0;
 const common_1 = require("@nestjs/common");
 const config_module_1 = require("../config/config.module");
 const vendure_logger_1 = require("../config/logger/vendure-logger");
+const connection_module_1 = require("../connection/connection.module");
 const i18n_module_1 = require("../i18n/i18n.module");
 const plugin_module_1 = require("../plugin/plugin.module");
 const process_context_module_1 = require("../process-context/process-context.module");
@@ -35,7 +36,8 @@ WorkerModule = __decorate([
             config_module_1.ConfigModule,
             i18n_module_1.I18nModule,
             plugin_module_1.PluginModule.forRoot(),
-            service_module_1.ServiceModule.forRoot(),
+            connection_module_1.ConnectionModule.forRoot(),
+            service_module_1.ServiceModule,
         ],
         providers: [worker_health_service_1.WorkerHealthService],
     })

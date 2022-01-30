@@ -4,7 +4,7 @@ export declare const customerGroup: PromotionCondition<{
     customerGroupId: {
         type: "ID";
         ui: {
-            component: "customer-group-form-input";
+            component: string;
         };
         label: {
             languageCode: LanguageCode.en;

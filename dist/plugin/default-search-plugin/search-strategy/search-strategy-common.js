@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fieldsToSelect = void 0;
+exports.getFieldsToSelect = exports.fieldsToSelect = void 0;
 exports.fieldsToSelect = [
     'sku',
     'enabled',
@@ -24,4 +24,8 @@ exports.fieldsToSelect = [
     'productVariantPreview',
     'productVariantPreviewFocalPoint',
 ];
+function getFieldsToSelect(includeStockStatus = false) {
+    return includeStockStatus ? [...exports.fieldsToSelect, 'inStock', 'productInStock'] : exports.fieldsToSelect;
+}
+exports.getFieldsToSelect = getFieldsToSelect;
 //# sourceMappingURL=search-strategy-common.js.map

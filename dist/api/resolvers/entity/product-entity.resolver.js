@@ -44,9 +44,12 @@ let ProductEntityResolver = class ProductEntityResolver {
     description(ctx, product) {
         return this.localeStringHydrator.hydrateLocaleStringField(ctx, product, 'description');
     }
-    async variants(ctx, product, apiType) {
+    async variants(ctx, product) {
         const { items: variants } = await this.productVariantService.getVariantsByProductId(ctx, product.id);
-        return variants.filter(v => (apiType === 'admin' ? true : v.enabled));
+        return variants;
+    }
+    async variantList(ctx, product, args) {
+        return this.productVariantService.getVariantsByProductId(ctx, product.id, args.options);
     }
     async collections(ctx, product, apiType) {
         return this.collectionService.getCollectionsByProductId(ctx, product.id, apiType === 'shop');
@@ -106,12 +109,21 @@ __decorate([
     graphql_1.ResolveField(),
     __param(0, request_context_decorator_1.Ctx()),
     __param(1, graphql_1.Parent()),
-    __param(2, api_decorator_1.Api()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [request_context_1.RequestContext,
-        product_entity_1.Product, String]),
+        product_entity_1.Product]),
     __metadata("design:returntype", Promise)
 ], ProductEntityResolver.prototype, "variants", null);
+__decorate([
+    graphql_1.ResolveField(),
+    __param(0, request_context_decorator_1.Ctx()),
+    __param(1, graphql_1.Parent()),
+    __param(2, graphql_1.Args()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [request_context_1.RequestContext,
+        product_entity_1.Product, Object]),
+    __metadata("design:returntype", Promise)
+], ProductEntityResolver.prototype, "variantList", null);
 __decorate([
     graphql_1.ResolveField(),
     __param(0, request_context_decorator_1.Ctx()),

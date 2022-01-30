@@ -4,13 +4,20 @@ import { RequestContext } from '../../api/common/request-context';
 import { ListQueryOptions } from '../../common/types/common-types';
 import { Translated } from '../../common/types/locale-types';
 import { ConfigService } from '../../config/config.service';
+import { TransactionalConnection } from '../../connection/transactional-connection';
 import { Facet } from '../../entity/facet/facet.entity';
+import { EventBus } from '../../event-bus';
 import { CustomFieldRelationService } from '../helpers/custom-field-relation/custom-field-relation.service';
 import { ListQueryBuilder } from '../helpers/list-query-builder/list-query-builder';
 import { TranslatableSaver } from '../helpers/translatable-saver/translatable-saver';
-import { TransactionalConnection } from '../transaction/transactional-connection';
 import { ChannelService } from './channel.service';
 import { FacetValueService } from './facet-value.service';
+/**
+ * @description
+ * Contains methods relating to {@link Facet} entities.
+ *
+ * @docsCategory services
+ */
 export declare class FacetService {
     private connection;
     private facetValueService;
@@ -19,10 +26,15 @@ export declare class FacetService {
     private configService;
     private channelService;
     private customFieldRelationService;
-    constructor(connection: TransactionalConnection, facetValueService: FacetValueService, translatableSaver: TranslatableSaver, listQueryBuilder: ListQueryBuilder, configService: ConfigService, channelService: ChannelService, customFieldRelationService: CustomFieldRelationService);
+    private eventBus;
+    constructor(connection: TransactionalConnection, facetValueService: FacetValueService, translatableSaver: TranslatableSaver, listQueryBuilder: ListQueryBuilder, configService: ConfigService, channelService: ChannelService, customFieldRelationService: CustomFieldRelationService, eventBus: EventBus);
     findAll(ctx: RequestContext, options?: ListQueryOptions<Facet>): Promise<PaginatedList<Translated<Facet>>>;
     findOne(ctx: RequestContext, facetId: ID): Promise<Translated<Facet> | undefined>;
     findByCode(facetCode: string, lang: LanguageCode): Promise<Translated<Facet> | undefined>;
+    /**
+     * @description
+     * Returns the Facet which contains the given FacetValue id.
+     */
     findByFacetValueId(ctx: RequestContext, id: ID): Promise<Translated<Facet> | undefined>;
     create(ctx: RequestContext, input: CreateFacetInput): Promise<Translated<Facet>>;
     update(ctx: RequestContext, input: UpdateFacetInput): Promise<Translated<Facet>>;

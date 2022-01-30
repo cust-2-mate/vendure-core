@@ -13,6 +13,12 @@ exports.OrderHistoryEntry = void 0;
 const typeorm_1 = require("typeorm");
 const order_entity_1 = require("../order/order.entity");
 const history_entry_entity_1 = require("./history-entry.entity");
+/**
+ * @description
+ * Represents an event in the history of a particular {@link Order}.
+ *
+ * @docsCategory entities
+ */
 let OrderHistoryEntry = class OrderHistoryEntry extends history_entry_entity_1.HistoryEntry {
     constructor(input) {
         super(input);

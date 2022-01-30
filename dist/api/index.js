@@ -11,6 +11,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./common/request-context"), exports);
+__exportStar(require("./common/extract-session-token"), exports);
 __exportStar(require("./decorators/allow.decorator"), exports);
 __exportStar(require("./decorators/transaction.decorator"), exports);
 __exportStar(require("./decorators/api.decorator"), exports);

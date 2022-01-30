@@ -14,12 +14,19 @@ const common_1 = require("@nestjs/common");
 const shared_utils_1 = require("@vendure/common/lib/shared-utils");
 const generated_graphql_admin_errors_1 = require("../../common/error/generated-graphql-admin-errors");
 const config_service_1 = require("../../config/config.service");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const fulfillment_entity_1 = require("../../entity/fulfillment/fulfillment.entity");
 const event_bus_1 = require("../../event-bus/event-bus");
+const fulfillment_event_1 = require("../../event-bus/events/fulfillment-event");
 const fulfillment_state_transition_event_1 = require("../../event-bus/events/fulfillment-state-transition-event");
 const custom_field_relation_service_1 = require("../helpers/custom-field-relation/custom-field-relation.service");
 const fulfillment_state_machine_1 = require("../helpers/fulfillment-state-machine/fulfillment-state-machine");
-const transactional_connection_1 = require("../transaction/transactional-connection");
+/**
+ * @description
+ * Contains methods relating to {@link Fulfillment} entities.
+ *
+ * @docsCategory services
+ */
 let FulfillmentService = class FulfillmentService {
     constructor(connection, fulfillmentStateMachine, eventBus, configService, customFieldRelationService) {
         this.connection = connection;
@@ -28,6 +35,11 @@ let FulfillmentService = class FulfillmentService {
         this.configService = configService;
         this.customFieldRelationService = customFieldRelationService;
     }
+    /**
+     * @description
+     * Creates a new Fulfillment for the given Orders and OrderItems, using the specified
+     * {@link FulfillmentHandler}.
+     */
     async create(ctx, orders, items, handler) {
         const fulfillmentHandler = this.configService.shippingOptions.fulfillmentHandlers.find(h => h.code === handler.code);
         if (!fulfillmentHandler) {
@@ -45,7 +57,12 @@ let FulfillmentService = class FulfillmentService {
             return new generated_graphql_admin_errors_1.CreateFulfillmentError(message);
         }
         const newFulfillment = await this.connection.getRepository(ctx, fulfillment_entity_1.Fulfillment).save(new fulfillment_entity_1.Fulfillment(Object.assign(Object.assign({ method: '', trackingCode: '' }, fulfillmentPartial), { orderItems: items, state: this.fulfillmentStateMachine.getInitialState(), handlerCode: fulfillmentHandler.code })));
-        await this.customFieldRelationService.updateRelations(ctx, fulfillment_entity_1.Fulfillment, fulfillmentPartial, newFulfillment);
+        const fulfillmentWithRelations = await this.customFieldRelationService.updateRelations(ctx, fulfillment_entity_1.Fulfillment, fulfillmentPartial, newFulfillment);
+        this.eventBus.publish(new fulfillment_event_1.FulfillmentEvent(ctx, fulfillmentWithRelations, {
+            orders,
+            items,
+            handler,
+        }));
         return newFulfillment;
     }
     async findOneOrThrow(ctx, id, relations = ['orderItems']) {
@@ -53,10 +70,19 @@ let FulfillmentService = class FulfillmentService {
             relations,
         });
     }
+    /**
+     * @description
+     * Returns all OrderItems associated with the specified Fulfillment.
+     */
     async getOrderItemsByFulfillmentId(ctx, id) {
         const fulfillment = await this.findOneOrThrow(ctx, id);
         return fulfillment.orderItems;
     }
+    /**
+     * @description
+     * Transitions the specified Fulfillment to a new state and upon successful transition
+     * publishes a {@link FulfillmentStateTransitionEvent}.
+     */
     async transitionToState(ctx, fulfillmentId, state) {
         const fulfillment = await this.findOneOrThrow(ctx, fulfillmentId, [
             'orderItems',
@@ -78,6 +104,10 @@ let FulfillmentService = class FulfillmentService {
         this.eventBus.publish(new fulfillment_state_transition_event_1.FulfillmentStateTransitionEvent(fromState, state, ctx, fulfillment));
         return { fulfillment, orders, fromState, toState: state };
     }
+    /**
+     * @description
+     * Returns an array of the next valid states for the Fulfillment.
+     */
     getNextStates(fulfillment) {
         return this.fulfillmentStateMachine.getNextStates(fulfillment);
     }

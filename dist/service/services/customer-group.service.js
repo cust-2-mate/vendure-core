@@ -14,14 +14,21 @@ const common_1 = require("@nestjs/common");
 const generated_types_1 = require("@vendure/common/lib/generated-types");
 const errors_1 = require("../../common/error/errors");
 const utils_1 = require("../../common/utils");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const customer_group_entity_1 = require("../../entity/customer-group/customer-group.entity");
 const customer_entity_1 = require("../../entity/customer/customer.entity");
 const event_bus_1 = require("../../event-bus/event-bus");
+const customer_group_entity_event_1 = require("../../event-bus/events/customer-group-entity-event");
 const customer_group_event_1 = require("../../event-bus/events/customer-group-event");
 const list_query_builder_1 = require("../helpers/list-query-builder/list-query-builder");
 const patch_entity_1 = require("../helpers/utils/patch-entity");
-const transactional_connection_1 = require("../transaction/transactional-connection");
 const history_service_1 = require("./history.service");
+/**
+ * @description
+ * Contains methods relating to {@link CustomerGroup} entities.
+ *
+ * @docsCategory services
+ */
 let CustomerGroupService = class CustomerGroupService {
     constructor(connection, listQueryBuilder, historyService, eventBus) {
         this.connection = connection;
@@ -38,6 +45,10 @@ let CustomerGroupService = class CustomerGroupService {
     findOne(ctx, customerGroupId) {
         return this.connection.getRepository(ctx, customer_group_entity_1.CustomerGroup).findOne(customerGroupId);
     }
+    /**
+     * @description
+     * Returns a {@link PaginatedList} of all the Customers in the group.
+     */
     getGroupCustomers(ctx, customerGroupId, options) {
         return this.listQueryBuilder
             .build(customer_entity_1.Customer, options, { ctx })
@@ -66,18 +77,22 @@ let CustomerGroupService = class CustomerGroupService {
             }
             await this.connection.getRepository(ctx, customer_entity_1.Customer).save(customers);
         }
-        return utils_1.assertFound(this.findOne(ctx, newCustomerGroup.id));
+        const savedCustomerGroup = await utils_1.assertFound(this.findOne(ctx, newCustomerGroup.id));
+        this.eventBus.publish(new customer_group_entity_event_1.CustomerGroupEntityEvent(ctx, savedCustomerGroup, 'created', input));
+        return savedCustomerGroup;
     }
     async update(ctx, input) {
         const customerGroup = await this.connection.getEntityOrThrow(ctx, customer_group_entity_1.CustomerGroup, input.id);
         const updatedCustomerGroup = patch_entity_1.patchEntity(customerGroup, input);
         await this.connection.getRepository(ctx, customer_group_entity_1.CustomerGroup).save(updatedCustomerGroup, { reload: false });
+        this.eventBus.publish(new customer_group_entity_event_1.CustomerGroupEntityEvent(ctx, customerGroup, 'updated', input));
         return utils_1.assertFound(this.findOne(ctx, customerGroup.id));
     }
     async delete(ctx, id) {
         const group = await this.connection.getEntityOrThrow(ctx, customer_group_entity_1.CustomerGroup, id);
         try {
             await this.connection.getRepository(ctx, customer_group_entity_1.CustomerGroup).remove(group);
+            this.eventBus.publish(new customer_group_entity_event_1.CustomerGroupEntityEvent(ctx, group, 'deleted', id));
             return {
                 result: generated_types_1.DeletionResult.DELETED,
             };
@@ -107,6 +122,7 @@ let CustomerGroupService = class CustomerGroupService {
         }
         await this.connection.getRepository(ctx, customer_entity_1.Customer).save(customers, { reload: false });
         this.eventBus.publish(new customer_group_event_1.CustomerGroupEvent(ctx, customers, group, 'assigned'));
+        this.eventBus.publish(new customer_group_event_1.CustomerGroupChangeEvent(ctx, customers, group, 'assigned'));
         return utils_1.assertFound(this.findOne(ctx, group.id));
     }
     async removeCustomersFromGroup(ctx, input) {
@@ -128,6 +144,7 @@ let CustomerGroupService = class CustomerGroupService {
         }
         await this.connection.getRepository(ctx, customer_entity_1.Customer).save(customers, { reload: false });
         this.eventBus.publish(new customer_group_event_1.CustomerGroupEvent(ctx, customers, group, 'removed'));
+        this.eventBus.publish(new customer_group_event_1.CustomerGroupChangeEvent(ctx, customers, group, 'removed'));
         return utils_1.assertFound(this.findOne(ctx, group.id));
     }
     getCustomersFromIds(ctx, ids) {

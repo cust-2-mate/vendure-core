@@ -2,10 +2,16 @@ import { CreateTagInput, DeletionResponse, UpdateTagInput } from '@vendure/commo
 import { ID, PaginatedList, Type } from '@vendure/common/lib/shared-types';
 import { RequestContext } from '../../api/common/request-context';
 import { ListQueryOptions, Taggable } from '../../common/types/common-types';
+import { TransactionalConnection } from '../../connection/transactional-connection';
 import { VendureEntity } from '../../entity/base/base.entity';
 import { Tag } from '../../entity/tag/tag.entity';
 import { ListQueryBuilder } from '../helpers/list-query-builder/list-query-builder';
-import { TransactionalConnection } from '../transaction/transactional-connection';
+/**
+ * @description
+ * Contains methods relating to {@link Tag} entities.
+ *
+ * @docsCategory services
+ */
 export declare class TagService {
     private connection;
     private listQueryBuilder;

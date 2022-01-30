@@ -36,6 +36,9 @@ let ConfigService = class ConfigService {
     get defaultLanguageCode() {
         return this.activeConfig.defaultLanguageCode;
     }
+    get entityOptions() {
+        return this.activeConfig.entityOptions;
+    }
     get entityIdStrategy() {
         return this.activeConfig.entityIdStrategy;
     }

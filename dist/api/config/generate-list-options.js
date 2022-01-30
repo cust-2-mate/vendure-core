@@ -13,6 +13,7 @@ function generateListOptions(typeDefsOrSchema) {
     if (!queryType) {
         return schema;
     }
+    const logicalOperatorEnum = schema.getType('LogicalOperator');
     const objectTypes = Object.values(schema.getTypeMap()).filter(graphql_1.isObjectType);
     const allFields = objectTypes.reduce((fields, type) => {
         const typeFields = Object.values(type.getFields()).filter(f => isListQueryType(f.type));
@@ -28,7 +29,20 @@ function generateListOptions(typeDefsOrSchema) {
             const existingListOptions = schema.getType(`${targetTypeName}ListOptions`);
             const generatedListOptions = new graphql_1.GraphQLInputObjectType({
                 name: `${targetTypeName}ListOptions`,
-                fields: Object.assign({ skip: { type: graphql_1.GraphQLInt }, take: { type: graphql_1.GraphQLInt }, sort: { type: sortParameter }, filter: { type: filterParameter } }, (existingListOptions ? existingListOptions.getFields() : {})),
+                fields: Object.assign(Object.assign({ skip: {
+                        type: graphql_1.GraphQLInt,
+                        description: 'Skips the first n results, for use in pagination',
+                    }, take: { type: graphql_1.GraphQLInt, description: 'Takes n results, for use in pagination' }, sort: {
+                        type: sortParameter,
+                        description: 'Specifies which properties to sort the results by',
+                    }, filter: { type: filterParameter, description: 'Allows the results to be filtered' } }, (logicalOperatorEnum
+                    ? {
+                        filterOperator: {
+                            type: logicalOperatorEnum,
+                            description: 'Specifies whether multiple "filter" arguments should be combines with a logical AND or OR operation. Defaults to AND.',
+                        },
+                    }
+                    : {})), (existingListOptions ? existingListOptions.getFields() : {})),
             });
             if (!query.args.find(a => a.type.toString() === `${targetTypeName}ListOptions`)) {
                 query.args.push({
@@ -90,7 +104,7 @@ function createSortParameter(schema, targetType) {
 function createFilterParameter(schema, targetType) {
     const fields = Object.values(targetType.getFields());
     const targetTypeName = targetType.name;
-    const { StringOperators, BooleanOperators, NumberOperators, DateOperators } = getCommonTypes(schema);
+    const { StringOperators, BooleanOperators, NumberOperators, DateOperators, IDOperators } = getCommonTypes(schema);
     const inputName = `${targetTypeName}FilterParameter`;
     const existingInput = schema.getType(inputName);
     if (graphql_1.isInputObjectType(existingInput)) {
@@ -128,6 +142,8 @@ function createFilterParameter(schema, targetType) {
                 return NumberOperators;
             case 'DateTime':
                 return DateOperators;
+            case 'ID':
+                return IDOperators;
             default:
                 return;
         }
@@ -141,13 +157,15 @@ function getCommonTypes(schema) {
     const NumberOperators = schema.getType('NumberOperators');
     const DateRange = schema.getType('DateRange');
     const DateOperators = schema.getType('DateOperators');
+    const IDOperators = schema.getType('IDOperators');
     if (!SortOrder ||
         !StringOperators ||
         !BooleanOperators ||
         !NumberRange ||
         !NumberOperators ||
         !DateRange ||
-        !DateOperators) {
+        !DateOperators ||
+        !IDOperators) {
         throw new Error(`A common type was not defined`);
     }
     return {
@@ -156,6 +174,7 @@ function getCommonTypes(schema) {
         BooleanOperators,
         NumberOperators,
         DateOperators,
+        IDOperators,
     };
 }
 /**

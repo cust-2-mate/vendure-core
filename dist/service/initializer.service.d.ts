@@ -1,10 +1,10 @@
+import { TransactionalConnection } from '../connection/transactional-connection';
 import { AdministratorService } from './services/administrator.service';
 import { ChannelService } from './services/channel.service';
 import { GlobalSettingsService } from './services/global-settings.service';
 import { RoleService } from './services/role.service';
 import { ShippingMethodService } from './services/shipping-method.service';
 import { ZoneService } from './services/zone.service';
-import { TransactionalConnection } from './transaction/transactional-connection';
 /**
  * Only used internally to run the various service init methods in the correct
  * sequence on bootstrap.

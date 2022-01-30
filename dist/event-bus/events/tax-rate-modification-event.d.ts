@@ -7,6 +7,7 @@ import { VendureEvent } from '../vendure-event';
  *
  * @docsCategory events
  * @docsPage Event Types
+ * @deprecated Use TaxRateEvent instead
  */
 export declare class TaxRateModificationEvent extends VendureEvent {
     ctx: RequestContext;

@@ -1,5 +1,5 @@
 import { BooleanCustomFieldConfig as GraphQLBooleanCustomFieldConfig, CustomField, DateTimeCustomFieldConfig as GraphQLDateTimeCustomFieldConfig, FloatCustomFieldConfig as GraphQLFloatCustomFieldConfig, IntCustomFieldConfig as GraphQLIntCustomFieldConfig, LocaleStringCustomFieldConfig as GraphQLLocaleStringCustomFieldConfig, LocalizedString, RelationCustomFieldConfig as GraphQLRelationCustomFieldConfig, StringCustomFieldConfig as GraphQLStringCustomFieldConfig, TextCustomFieldConfig as GraphQLTextCustomFieldConfig } from '@vendure/common/lib/generated-types';
-import { CustomFieldsObject, CustomFieldType, Type } from '@vendure/common/lib/shared-types';
+import { CustomFieldsObject, CustomFieldType, DefaultFormComponentId, Type, UiComponentConfig } from '@vendure/common/lib/shared-types';
 import { Injector } from '../../common/injector';
 import { VendureEntity } from '../../entity/base/base.entity';
 export declare type DefaultValueType<T extends CustomFieldType> = T extends 'string' | 'localeString' ? string : T extends 'int' | 'float' ? number : T extends 'boolean' ? boolean : T extends 'datetime' ? Date : T extends 'relation' ? any : never;
@@ -12,6 +12,7 @@ export declare type BaseTypedCustomFieldConfig<T extends CustomFieldType, C exte
      */
     public?: boolean;
     nullable?: boolean;
+    ui?: UiComponentConfig<DefaultFormComponentId | string>;
 };
 /**
  * @description
@@ -58,14 +59,14 @@ export declare type CustomFieldConfig = StringCustomFieldConfig | LocaleStringCu
  *
  * All custom fields share some common properties:
  *
- * * `name: string`: The name of the field
- * * `type: string`: A string of type {@link CustomFieldType}
- * * `list: boolean`: If set to `true`, then the field will be an array of the specified type
+ * * `name: string`: The name of the field.
+ * * `type: string`: A string of type {@link CustomFieldType}.
+ * * `list: boolean`: If set to `true`, then the field will be an array of the specified type.
  * * `label?: LocalizedString[]`: An array of localized labels for the field.
  * * `description?: LocalizedString[]`: An array of localized descriptions for the field.
- * * `public?: boolean`: Whether or not the custom field is available via the Shop API. Defaults to `true`
- * * `readonly?: boolean`: Whether or not the custom field can be updated via the GraphQL APIs. Defaults to `false`
- * * `internal?: boolean`: Whether or not the custom field is exposed at all via the GraphQL APIs. Defaults to `false`
+ * * `public?: boolean`: Whether or not the custom field is available via the Shop API. Defaults to `true`.
+ * * `readonly?: boolean`: Whether or not the custom field can be updated via the GraphQL APIs. Defaults to `false`.
+ * * `internal?: boolean`: Whether or not the custom field is exposed at all via the GraphQL APIs. Defaults to `false`.
  * * `defaultValue?: any`: The default value when an Entity is created with this field.
  * * `nullable?: boolean`: Whether the field is nullable in the database. If set to `false`, then a `defaultValue` should be provided.
  * * `validate?: (value: any) => string | LocalizedString[] | void`: A custom validation function. If the value is valid, then
@@ -140,19 +141,26 @@ export interface CustomFields {
     Asset?: CustomFieldConfig[];
     Channel?: CustomFieldConfig[];
     Collection?: CustomFieldConfig[];
+    Country?: CustomFieldConfig[];
     Customer?: CustomFieldConfig[];
+    CustomerGroup?: CustomFieldConfig[];
     Facet?: CustomFieldConfig[];
     FacetValue?: CustomFieldConfig[];
     Fulfillment?: CustomFieldConfig[];
     GlobalSettings?: CustomFieldConfig[];
     Order?: CustomFieldConfig[];
     OrderLine?: CustomFieldConfig[];
+    PaymentMethod?: CustomFieldConfig[];
     Product?: CustomFieldConfig[];
     ProductOption?: CustomFieldConfig[];
     ProductOptionGroup?: CustomFieldConfig[];
     ProductVariant?: CustomFieldConfig[];
-    User?: CustomFieldConfig[];
+    Promotion?: CustomFieldConfig[];
     ShippingMethod?: CustomFieldConfig[];
+    TaxCategory?: CustomFieldConfig[];
+    TaxRate?: CustomFieldConfig[];
+    User?: CustomFieldConfig[];
+    Zone?: CustomFieldConfig[];
 }
 /**
  * This interface should be implemented by any entity which can be extended

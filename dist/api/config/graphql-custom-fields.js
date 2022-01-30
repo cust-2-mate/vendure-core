@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addOrderLineCustomFieldsInput = exports.addModifyOrderCustomFields = exports.addRegisterCustomerCustomFieldsInput = exports.addActiveAdministratorCustomFields = exports.addServerConfigCustomFields = exports.addGraphQLCustomFields = void 0;
+exports.addPaymentMethodQuoteCustomFields = exports.addShippingMethodQuoteCustomFields = exports.addOrderLineCustomFieldsInput = exports.addModifyOrderCustomFields = exports.addRegisterCustomerCustomFieldsInput = exports.addActiveAdministratorCustomFields = exports.addServerConfigCustomFields = exports.addGraphQLCustomFields = void 0;
 const shared_utils_1 = require("@vendure/common/lib/shared-utils");
 const graphql_1 = require("graphql");
 /**
@@ -326,6 +326,48 @@ function addOrderLineCustomFieldsInput(typeDefsOrSchema, orderLineCustomFields) 
     return extendedSchema;
 }
 exports.addOrderLineCustomFieldsInput = addOrderLineCustomFieldsInput;
+function addShippingMethodQuoteCustomFields(typeDefsOrSchema, shippingMethodCustomFields) {
+    const schema = typeof typeDefsOrSchema === 'string' ? graphql_1.buildSchema(typeDefsOrSchema) : typeDefsOrSchema;
+    let customFieldTypeDefs = ``;
+    const publicCustomFields = shippingMethodCustomFields.filter(f => f.public !== false);
+    if (0 < publicCustomFields.length) {
+        customFieldTypeDefs = `
+            extend type ShippingMethodQuote {
+                customFields: ShippingMethodCustomFields
+            }
+        `;
+    }
+    else {
+        customFieldTypeDefs = `
+            extend type ShippingMethodQuote {
+                customFields: JSON
+            }
+        `;
+    }
+    return graphql_1.extendSchema(schema, graphql_1.parse(customFieldTypeDefs));
+}
+exports.addShippingMethodQuoteCustomFields = addShippingMethodQuoteCustomFields;
+function addPaymentMethodQuoteCustomFields(typeDefsOrSchema, paymentMethodCustomFields) {
+    const schema = typeof typeDefsOrSchema === 'string' ? graphql_1.buildSchema(typeDefsOrSchema) : typeDefsOrSchema;
+    let customFieldTypeDefs = ``;
+    const publicCustomFields = paymentMethodCustomFields.filter(f => f.public !== false);
+    if (0 < publicCustomFields.length) {
+        customFieldTypeDefs = `
+            extend type PaymentMethodQuote {
+                customFields: PaymentMethodCustomFields
+            }
+        `;
+    }
+    else {
+        customFieldTypeDefs = `
+            extend type PaymentMethodQuote {
+                customFields: JSON
+            }
+        `;
+    }
+    return graphql_1.extendSchema(schema, graphql_1.parse(customFieldTypeDefs));
+}
+exports.addPaymentMethodQuoteCustomFields = addPaymentMethodQuoteCustomFields;
 /**
  * Maps an array of CustomFieldConfig objects into a string of SDL fields.
  */

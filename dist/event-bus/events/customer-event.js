@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CustomerEvent = void 0;
-const vendure_event_1 = require("../vendure-event");
+const vendure_entity_event_1 = require("../vendure-entity-event");
 /**
  * @description
  * This event is fired whenever a {@link Customer} is added, updated
@@ -10,12 +10,18 @@ const vendure_event_1 = require("../vendure-event");
  * @docsCategory events
  * @docsPage Event Types
  */
-class CustomerEvent extends vendure_event_1.VendureEvent {
-    constructor(ctx, customer, type) {
-        super();
-        this.ctx = ctx;
-        this.customer = customer;
-        this.type = type;
+class CustomerEvent extends vendure_entity_event_1.VendureEntityEvent {
+    constructor(ctx, entity, type, input) {
+        super(entity, type, ctx, input);
+    }
+    /**
+     * Return an customer field to become compatible with the
+     * deprecated old version of CustomerEvent
+     * @deprecated Use `entity` instead
+     * @since 1.4
+     */
+    get customer() {
+        return this.entity;
     }
 }
 exports.CustomerEvent = CustomerEvent;

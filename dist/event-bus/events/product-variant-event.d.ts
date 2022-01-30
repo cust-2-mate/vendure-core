@@ -1,6 +1,9 @@
+import { CreateProductVariantInput, UpdateProductVariantInput } from '@vendure/common/lib/generated-types';
+import { ID } from '@vendure/common/lib/shared-types';
 import { RequestContext } from '../../api/common/request-context';
 import { ProductVariant } from '../../entity';
-import { VendureEvent } from '../vendure-event';
+import { VendureEntityEvent } from '../vendure-entity-event';
+declare type ProductVariantInputTypes = CreateProductVariantInput[] | UpdateProductVariantInput[] | ID | ID[];
 /**
  * @description
  * This event is fired whenever a {@link ProductVariant} is added, updated
@@ -9,9 +12,14 @@ import { VendureEvent } from '../vendure-event';
  * @docsCategory events
  * @docsPage Event Types
  */
-export declare class ProductVariantEvent extends VendureEvent {
-    ctx: RequestContext;
-    variants: ProductVariant[];
-    type: 'created' | 'updated' | 'deleted';
-    constructor(ctx: RequestContext, variants: ProductVariant[], type: 'created' | 'updated' | 'deleted');
+export declare class ProductVariantEvent extends VendureEntityEvent<ProductVariant[], ProductVariantInputTypes> {
+    constructor(ctx: RequestContext, entity: ProductVariant[], type: 'created' | 'updated' | 'deleted', input?: ProductVariantInputTypes);
+    /**
+     * Return an variants field to become compatible with the
+     * deprecated old version of ProductEvent
+     * @deprecated Use `entity` instead
+     * @since 1.4
+     */
+    get variants(): ProductVariant[];
 }
+export {};

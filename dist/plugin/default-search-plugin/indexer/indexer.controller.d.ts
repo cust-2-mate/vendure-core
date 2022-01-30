@@ -1,17 +1,22 @@
 import { Observable } from 'rxjs';
+import { RequestContextCacheService } from '../../../cache/request-context-cache.service';
 import { ConfigService } from '../../../config/config.service';
+import { TransactionalConnection } from '../../../connection/transactional-connection';
+import { ProductPriceApplicator } from '../../../service/helpers/product-price-applicator/product-price-applicator';
 import { ProductVariantService } from '../../../service/services/product-variant.service';
-import { TransactionalConnection } from '../../../service/transaction/transactional-connection';
-import { ProductChannelMessageData, ReindexMessageData, ReindexMessageResponse, UpdateAssetMessageData, UpdateProductMessageData, UpdateVariantMessageData, UpdateVariantsByIdMessageData, VariantChannelMessageData } from '../types';
+import { DefaultSearchPluginInitOptions, ProductChannelMessageData, ReindexMessageData, ReindexMessageResponse, UpdateAssetMessageData, UpdateProductMessageData, UpdateVariantMessageData, UpdateVariantsByIdMessageData, VariantChannelMessageData } from '../types';
 export declare const BATCH_SIZE = 1000;
 export declare const variantRelations: string[];
 export declare const workerLoggerCtx = "DefaultSearchPlugin Worker";
 export declare class IndexerController {
     private connection;
-    private productVariantService;
+    private productPriceApplicator;
     private configService;
+    private requestContextCache;
+    private productVariantService;
+    private options;
     private queue;
-    constructor(connection: TransactionalConnection, productVariantService: ProductVariantService, configService: ConfigService);
+    constructor(connection: TransactionalConnection, productPriceApplicator: ProductPriceApplicator, configService: ConfigService, requestContextCache: RequestContextCacheService, productVariantService: ProductVariantService, options: DefaultSearchPluginInitOptions);
     reindex({ ctx: rawContext }: ReindexMessageData): Observable<ReindexMessageResponse>;
     updateVariantsById({ ctx: rawContext, ids, }: UpdateVariantsByIdMessageData): Observable<ReindexMessageResponse>;
     updateProduct(data: UpdateProductMessageData): Promise<boolean>;

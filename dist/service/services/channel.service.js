@@ -18,42 +18,62 @@ const request_context_1 = require("../../api/common/request-context");
 const error_result_1 = require("../../common/error/error-result");
 const errors_1 = require("../../common/error/errors");
 const generated_graphql_admin_errors_1 = require("../../common/error/generated-graphql-admin-errors");
+const self_refreshing_cache_1 = require("../../common/self-refreshing-cache");
 const utils_1 = require("../../common/utils");
 const config_service_1 = require("../../config/config.service");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const channel_entity_1 = require("../../entity/channel/channel.entity");
 const product_variant_price_entity_1 = require("../../entity/product-variant/product-variant-price.entity");
 const session_entity_1 = require("../../entity/session/session.entity");
 const zone_entity_1 = require("../../entity/zone/zone.entity");
+const event_bus_1 = require("../../event-bus");
+const change_channel_event_1 = require("../../event-bus/events/change-channel-event");
+const channel_event_1 = require("../../event-bus/events/channel-event");
 const custom_field_relation_service_1 = require("../helpers/custom-field-relation/custom-field-relation.service");
 const patch_entity_1 = require("../helpers/utils/patch-entity");
-const transactional_connection_1 = require("../transaction/transactional-connection");
 const global_settings_service_1 = require("./global-settings.service");
+/**
+ * @description
+ * Contains methods relating to {@link Channel} entities.
+ *
+ * @docsCategory services
+ */
 let ChannelService = class ChannelService {
-    constructor(connection, configService, globalSettingsService, customFieldRelationService) {
+    constructor(connection, configService, globalSettingsService, customFieldRelationService, eventBus) {
         this.connection = connection;
         this.configService = configService;
         this.globalSettingsService = globalSettingsService;
         this.customFieldRelationService = customFieldRelationService;
-        this.allChannels = [];
+        this.eventBus = eventBus;
     }
     /**
      * When the app is bootstrapped, ensure a default Channel exists and populate the
      * channel lookup array.
+     *
+     * @internal
      */
     async initChannels() {
         await this.ensureDefaultChannelExists();
-        await this.updateAllChannels();
+        this.allChannels = await self_refreshing_cache_1.createSelfRefreshingCache({
+            name: 'ChannelService.allChannels',
+            ttl: this.configService.entityOptions.channelCacheTtl,
+            refresh: { fn: ctx => this.findAll(ctx), defaultArgs: [request_context_1.RequestContext.empty()] },
+        });
     }
     /**
+     * @description
      * Assigns a ChannelAware entity to the default Channel as well as any channel
      * specified in the RequestContext.
      */
-    assignToCurrentChannel(entity, ctx) {
-        const channelIds = unique_1.unique([ctx.channelId, this.getDefaultChannel().id]);
+    async assignToCurrentChannel(entity, ctx) {
+        const defaultChannel = await this.getDefaultChannel();
+        const channelIds = unique_1.unique([ctx.channelId, defaultChannel.id]);
         entity.channels = channelIds.map(id => ({ id }));
+        this.eventBus.publish(new change_channel_event_1.ChangeChannelEvent(ctx, entity, [ctx.channelId], 'assigned'));
         return entity;
     }
     /**
+     * @description
      * Assigns the entity to the given Channels and saves.
      */
     async assignToChannels(ctx, entityType, entityId, channelIds) {
@@ -65,9 +85,11 @@ let ChannelService = class ChannelService {
             entity.channels.push(channel);
         }
         await this.connection.getRepository(ctx, entityType).save(entity, { reload: false });
+        this.eventBus.publish(new change_channel_event_1.ChangeChannelEvent(ctx, entity, channelIds, 'assigned', entityType));
         return entity;
     }
     /**
+     * @description
      * Removes the entity from the given Channels and saves.
      */
     async removeFromChannels(ctx, entityType, entityId, channelIds) {
@@ -81,27 +103,33 @@ let ChannelService = class ChannelService {
             entity.channels = entity.channels.filter(c => !utils_1.idsAreEqual(c.id, id));
         }
         await this.connection.getRepository(ctx, entityType).save(entity, { reload: false });
+        this.eventBus.publish(new change_channel_event_1.ChangeChannelEvent(ctx, entity, channelIds, 'removed', entityType));
         return entity;
     }
     /**
-     * Given a channel token, returns the corresponding Channel if it exists.
+     * @description
+     * Given a channel token, returns the corresponding Channel if it exists, else will throw
+     * a {@link ChannelNotFoundError}.
      */
-    getChannelFromToken(token) {
-        if (this.allChannels.length === 1 || token === '') {
+    async getChannelFromToken(token) {
+        const allChannels = await this.allChannels.value();
+        if (allChannels.length === 1 || token === '') {
             // there is only the default channel, so return it
             return this.getDefaultChannel();
         }
-        const channel = this.allChannels.find(c => c.token === token);
+        const channel = allChannels.find(c => c.token === token);
         if (!channel) {
             throw new errors_1.ChannelNotFoundError(token);
         }
         return channel;
     }
     /**
+     * @description
      * Returns the default Channel.
      */
-    getDefaultChannel() {
-        const defaultChannel = this.allChannels.find(channel => channel.code === shared_constants_1.DEFAULT_CHANNEL_CODE);
+    async getDefaultChannel() {
+        const allChannels = await this.allChannels.value();
+        const defaultChannel = allChannels.find(channel => channel.code === shared_constants_1.DEFAULT_CHANNEL_CODE);
         if (!defaultChannel) {
             throw new errors_1.InternalServerError(`error.default-channel-not-found`);
         }
@@ -131,7 +159,8 @@ let ChannelService = class ChannelService {
         }
         const newChannel = await this.connection.getRepository(ctx, channel_entity_1.Channel).save(channel);
         await this.customFieldRelationService.updateRelations(ctx, channel_entity_1.Channel, input, newChannel);
-        await this.updateAllChannels(ctx);
+        await this.allChannels.refresh(ctx);
+        this.eventBus.publish(new channel_event_1.ChannelEvent(ctx, newChannel, 'created', input));
         return channel;
     }
     async update(ctx, input) {
@@ -152,20 +181,27 @@ let ChannelService = class ChannelService {
         }
         await this.connection.getRepository(ctx, channel_entity_1.Channel).save(updatedChannel, { reload: false });
         await this.customFieldRelationService.updateRelations(ctx, channel_entity_1.Channel, input, updatedChannel);
-        await this.updateAllChannels(ctx);
+        await this.allChannels.refresh(ctx);
+        this.eventBus.publish(new channel_event_1.ChannelEvent(ctx, channel, 'updated', input));
         return utils_1.assertFound(this.findOne(ctx, channel.id));
     }
     async delete(ctx, id) {
-        await this.connection.getEntityOrThrow(ctx, channel_entity_1.Channel, id);
+        const channel = await this.connection.getEntityOrThrow(ctx, channel_entity_1.Channel, id);
         await this.connection.getRepository(ctx, session_entity_1.Session).delete({ activeChannelId: id });
         await this.connection.getRepository(ctx, channel_entity_1.Channel).delete(id);
         await this.connection.getRepository(ctx, product_variant_price_entity_1.ProductVariantPrice).delete({
             channelId: id,
         });
+        this.eventBus.publish(new channel_event_1.ChannelEvent(ctx, channel, 'deleted', id));
         return {
             result: generated_types_1.DeletionResult.DELETED,
         };
     }
+    /**
+     * @description
+     * Type guard method which returns true if the given entity is an
+     * instance of a class which implements the {@link ChannelAware} interface.
+     */
     isChannelAware(entity) {
         const entityType = Object.getPrototypeOf(entity).constructor;
         return !!this.connection.rawConnection
@@ -208,16 +244,14 @@ let ChannelService = class ChannelService {
             }
         }
     }
-    async updateAllChannels(ctx) {
-        this.allChannels = await this.findAll(ctx || request_context_1.RequestContext.empty());
-    }
 };
 ChannelService = __decorate([
     common_1.Injectable(),
     __metadata("design:paramtypes", [transactional_connection_1.TransactionalConnection,
         config_service_1.ConfigService,
         global_settings_service_1.GlobalSettingsService,
-        custom_field_relation_service_1.CustomFieldRelationService])
+        custom_field_relation_service_1.CustomFieldRelationService,
+        event_bus_1.EventBus])
 ], ChannelService);
 exports.ChannelService = ChannelService;
 //# sourceMappingURL=channel.service.js.map

@@ -42,7 +42,7 @@ function configureGraphQLModule(getOptions) {
             graphql_1.GraphQLTypesLoader,
             custom_field_relation_resolver_service_1.CustomFieldRelationResolverService,
         ],
-        imports: [config_module_1.ConfigModule, i18n_module_1.I18nModule, api_internal_modules_1.ApiSharedModule, service_module_1.ServiceModule.forRoot()],
+        imports: [config_module_1.ConfigModule, i18n_module_1.I18nModule, api_internal_modules_1.ApiSharedModule, service_module_1.ServiceModule],
     });
 }
 exports.configureGraphQLModule = configureGraphQLModule;
@@ -95,6 +95,8 @@ async function createGraphQLOptions(i18nService, configService, idCodecService, 
         schema = graphql_custom_fields_1.addGraphQLCustomFields(schema, customFields, apiType === 'shop');
         schema = graphql_custom_fields_1.addOrderLineCustomFieldsInput(schema, customFields.OrderLine || []);
         schema = graphql_custom_fields_1.addModifyOrderCustomFields(schema, customFields.Order || []);
+        schema = graphql_custom_fields_1.addShippingMethodQuoteCustomFields(schema, customFields.ShippingMethod || []);
+        schema = graphql_custom_fields_1.addPaymentMethodQuoteCustomFields(schema, customFields.PaymentMethod || []);
         schema = generate_auth_types_1.generateAuthenticationTypes(schema, authStrategies);
         schema = generate_error_code_enum_1.generateErrorCodeEnum(schema);
         if (apiType === 'admin') {

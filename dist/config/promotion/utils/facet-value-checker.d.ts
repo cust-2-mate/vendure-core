@@ -1,6 +1,6 @@
 import { ID } from '@vendure/common/lib/shared-types';
+import { TransactionalConnection } from '../../../connection/transactional-connection';
 import { OrderLine } from '../../../entity/order-line/order-line.entity';
-import { TransactionalConnection } from '../../../service/transaction/transactional-connection';
 /**
  * @description
  * The FacetValueChecker is a helper class used to determine whether a given OrderLine consists

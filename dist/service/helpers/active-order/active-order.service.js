@@ -12,19 +12,34 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ActiveOrderService = void 0;
 const common_1 = require("@nestjs/common");
 const errors_1 = require("../../../common/error/errors");
+const transactional_connection_1 = require("../../../connection/transactional-connection");
+const order_entity_1 = require("../../../entity/order/order.entity");
 const order_service_1 = require("../../services/order.service");
 const session_service_1 = require("../../services/session.service");
+/**
+ * @description
+ * This helper class is used to get a reference to the active Order from the current RequestContext.
+ *
+ * @docsCategory orders
+ */
 let ActiveOrderService = class ActiveOrderService {
-    constructor(sessionService, orderService) {
+    constructor(sessionService, orderService, connection) {
         this.sessionService = sessionService;
         this.orderService = orderService;
+        this.connection = connection;
     }
     async getOrderFromContext(ctx, createIfNotExists = false) {
         if (!ctx.session) {
             throw new errors_1.InternalServerError(`error.no-active-session`);
         }
         let order = ctx.session.activeOrderId
-            ? await this.orderService.findOne(ctx, ctx.session.activeOrderId)
+            ? await this.connection
+                .getRepository(ctx, order_entity_1.Order)
+                .createQueryBuilder('order')
+                .leftJoin('order.channels', 'channel')
+                .where('order.id = :orderId', { orderId: ctx.session.activeOrderId })
+                .andWhere('channel.id = :channelId', { channelId: ctx.channelId })
+                .getOne()
             : undefined;
         if (order && order.active === false) {
             // edge case where an inactive order may not have been
@@ -48,7 +63,9 @@ let ActiveOrderService = class ActiveOrderService {
 };
 ActiveOrderService = __decorate([
     common_1.Injectable(),
-    __metadata("design:paramtypes", [session_service_1.SessionService, order_service_1.OrderService])
+    __metadata("design:paramtypes", [session_service_1.SessionService,
+        order_service_1.OrderService,
+        transactional_connection_1.TransactionalConnection])
 ], ActiveOrderService);
 exports.ActiveOrderService = ActiveOrderService;
 //# sourceMappingURL=active-order.service.js.map

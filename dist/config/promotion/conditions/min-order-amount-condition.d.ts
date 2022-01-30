@@ -4,7 +4,7 @@ export declare const minimumOrderAmount: PromotionCondition<{
         type: "int";
         defaultValue: number;
         ui: {
-            component: "currency-form-input";
+            component: string;
         };
     };
     taxInclusive: {

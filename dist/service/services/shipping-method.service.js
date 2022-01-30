@@ -13,22 +13,29 @@ exports.ShippingMethodService = void 0;
 const common_1 = require("@nestjs/common");
 const generated_types_1 = require("@vendure/common/lib/generated-types");
 const omit_1 = require("@vendure/common/lib/omit");
-const request_context_1 = require("../../api/common/request-context");
 const errors_1 = require("../../common/error/errors");
 const utils_1 = require("../../common/utils");
 const config_service_1 = require("../../config/config.service");
 const vendure_logger_1 = require("../../config/logger/vendure-logger");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const shipping_method_translation_entity_1 = require("../../entity/shipping-method/shipping-method-translation.entity");
 const shipping_method_entity_1 = require("../../entity/shipping-method/shipping-method.entity");
+const event_bus_1 = require("../../event-bus");
+const shipping_method_event_1 = require("../../event-bus/events/shipping-method-event");
 const config_arg_service_1 = require("../helpers/config-arg/config-arg.service");
 const custom_field_relation_service_1 = require("../helpers/custom-field-relation/custom-field-relation.service");
 const list_query_builder_1 = require("../helpers/list-query-builder/list-query-builder");
 const translatable_saver_1 = require("../helpers/translatable-saver/translatable-saver");
 const translate_entity_1 = require("../helpers/utils/translate-entity");
-const transactional_connection_1 = require("../transaction/transactional-connection");
 const channel_service_1 = require("./channel.service");
+/**
+ * @description
+ * Contains methods relating to {@link ShippingMethod} entities.
+ *
+ * @docsCategory services
+ */
 let ShippingMethodService = class ShippingMethodService {
-    constructor(connection, configService, listQueryBuilder, channelService, configArgService, translatableSaver, customFieldRelationService) {
+    constructor(connection, configService, listQueryBuilder, channelService, configArgService, translatableSaver, customFieldRelationService, eventBus) {
         this.connection = connection;
         this.configService = configService;
         this.listQueryBuilder = listQueryBuilder;
@@ -36,7 +43,9 @@ let ShippingMethodService = class ShippingMethodService {
         this.configArgService = configArgService;
         this.translatableSaver = translatableSaver;
         this.customFieldRelationService = customFieldRelationService;
+        this.eventBus = eventBus;
     }
+    /** @internal */
     async initShippingMethods() {
         if (this.configService.shippingOptions.fulfillmentHandlers.length === 0) {
             throw new Error(`No FulfillmentHandlers were found. Please ensure the VendureConfig.shippingOptions.fulfillmentHandlers array contains at least one FulfillmentHandler.`);
@@ -73,12 +82,12 @@ let ShippingMethodService = class ShippingMethodService {
                 method.calculator = this.configArgService.parseInput('ShippingCalculator', input.calculator);
             },
         });
-        this.channelService.assignToCurrentChannel(shippingMethod, ctx);
+        await this.channelService.assignToCurrentChannel(shippingMethod, ctx);
         const newShippingMethod = await this.connection
             .getRepository(ctx, shipping_method_entity_1.ShippingMethod)
             .save(shippingMethod);
-        await this.customFieldRelationService.updateRelations(ctx, shipping_method_entity_1.ShippingMethod, input, newShippingMethod);
-        await this.updateActiveShippingMethods(ctx);
+        const shippingMethodWithRelations = await this.customFieldRelationService.updateRelations(ctx, shipping_method_entity_1.ShippingMethod, input, newShippingMethod);
+        this.eventBus.publish(new shipping_method_event_1.ShippingMethodEvent(ctx, shippingMethodWithRelations, 'created', input));
         return utils_1.assertFound(this.findOne(ctx, newShippingMethod.id));
     }
     async update(ctx, input) {
@@ -105,7 +114,7 @@ let ShippingMethodService = class ShippingMethodService {
             .getRepository(ctx, shipping_method_entity_1.ShippingMethod)
             .save(updatedShippingMethod, { reload: false });
         await this.customFieldRelationService.updateRelations(ctx, shipping_method_entity_1.ShippingMethod, input, updatedShippingMethod);
-        await this.updateActiveShippingMethods(ctx);
+        this.eventBus.publish(new shipping_method_event_1.ShippingMethodEvent(ctx, shippingMethod, 'updated', input));
         return utils_1.assertFound(this.findOne(ctx, shippingMethod.id));
     }
     async softDelete(ctx, id) {
@@ -115,7 +124,7 @@ let ShippingMethodService = class ShippingMethodService {
         });
         shippingMethod.deletedAt = new Date();
         await this.connection.getRepository(ctx, shipping_method_entity_1.ShippingMethod).save(shippingMethod, { reload: false });
-        await this.updateActiveShippingMethods(ctx);
+        this.eventBus.publish(new shipping_method_event_1.ShippingMethodEvent(ctx, shippingMethod, 'deleted', id));
         return {
             result: generated_types_1.DeletionResult.DELETED,
         };
@@ -131,15 +140,23 @@ let ShippingMethodService = class ShippingMethodService {
     getFulfillmentHandlers(ctx) {
         return this.configArgService.getDefinitions('FulfillmentHandler').map(x => x.toGraphQlType(ctx));
     }
-    getActiveShippingMethods(channel) {
-        return this.activeShippingMethods.filter(sm => sm.channels.find(c => utils_1.idsAreEqual(c.id, channel.id)));
+    async getActiveShippingMethods(ctx) {
+        const shippingMethods = await this.connection.getRepository(ctx, shipping_method_entity_1.ShippingMethod).find({
+            relations: ['channels'],
+            where: { deletedAt: null },
+        });
+        return shippingMethods
+            .filter(sm => sm.channels.find(c => utils_1.idsAreEqual(c.id, ctx.channelId)))
+            .map(m => translate_entity_1.translateDeep(m, ctx.languageCode));
     }
     /**
      * Ensures that all ShippingMethods have a valid fulfillmentHandlerCode
      */
     async verifyShippingMethods() {
-        await this.updateActiveShippingMethods(request_context_1.RequestContext.empty());
-        for (const method of this.activeShippingMethods) {
+        const activeShippingMethods = await this.connection.getRepository(shipping_method_entity_1.ShippingMethod).find({
+            where: { deletedAt: null },
+        });
+        for (const method of activeShippingMethods) {
             const handlerCode = method.fulfillmentHandlerCode;
             const verifiedHandlerCode = this.ensureValidFulfillmentHandlerCode(method.code, handlerCode);
             if (handlerCode !== verifiedHandlerCode) {
@@ -147,13 +164,6 @@ let ShippingMethodService = class ShippingMethodService {
                 await this.connection.getRepository(shipping_method_entity_1.ShippingMethod).save(method);
             }
         }
-    }
-    async updateActiveShippingMethods(ctx) {
-        const activeShippingMethods = await this.connection.getRepository(ctx, shipping_method_entity_1.ShippingMethod).find({
-            relations: ['channels'],
-            where: { deletedAt: null },
-        });
-        this.activeShippingMethods = activeShippingMethods.map(m => translate_entity_1.translateDeep(m, ctx.languageCode));
     }
     ensureValidFulfillmentHandlerCode(shippingMethodCode, fulfillmentHandlerCode) {
         const { fulfillmentHandlers } = this.configService.shippingOptions;
@@ -174,7 +184,8 @@ ShippingMethodService = __decorate([
         channel_service_1.ChannelService,
         config_arg_service_1.ConfigArgService,
         translatable_saver_1.TranslatableSaver,
-        custom_field_relation_service_1.CustomFieldRelationService])
+        custom_field_relation_service_1.CustomFieldRelationService,
+        event_bus_1.EventBus])
 ], ShippingMethodService);
 exports.ShippingMethodService = ShippingMethodService;
 //# sourceMappingURL=shipping-method.service.js.map

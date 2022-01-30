@@ -12,4 +12,6 @@ export declare class SearchResolver {
         count: number;
     }>>;
     reindex(...args: any[]): Promise<any>;
+    pendingSearchIndexUpdates(...args: any[]): Promise<any>;
+    runPendingSearchIndexUpdates(...args: any[]): Promise<any>;
 }

@@ -5,7 +5,7 @@ import { RequestContext } from '../../common/request-context';
 export declare class ZoneResolver {
     private zoneService;
     constructor(zoneService: ZoneService);
-    zones(ctx: RequestContext): Zone[];
+    zones(ctx: RequestContext): Promise<Zone[]>;
     zone(ctx: RequestContext, args: QueryZoneArgs): Promise<Zone | undefined>;
     createZone(ctx: RequestContext, args: MutationCreateZoneArgs): Promise<Zone>;
     updateZone(ctx: RequestContext, args: MutationUpdateZoneArgs): Promise<Zone>;

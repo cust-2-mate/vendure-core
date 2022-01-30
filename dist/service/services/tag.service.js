@@ -13,9 +13,15 @@ exports.TagService = void 0;
 const common_1 = require("@nestjs/common");
 const generated_types_1 = require("@vendure/common/lib/generated-types");
 const unique_1 = require("@vendure/common/lib/unique");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const tag_entity_1 = require("../../entity/tag/tag.entity");
 const list_query_builder_1 = require("../helpers/list-query-builder/list-query-builder");
-const transactional_connection_1 = require("../transaction/transactional-connection");
+/**
+ * @description
+ * Contains methods relating to {@link Tag} entities.
+ *
+ * @docsCategory services
+ */
 let TagService = class TagService {
     constructor(connection, listQueryBuilder) {
         this.connection = connection;

@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.discountOnItemWithFacets = void 0;
 const generated_types_1 = require("@vendure/common/lib/generated-types");
-const transactional_connection_1 = require("../../../service/transaction/transactional-connection");
+const transactional_connection_1 = require("../../../connection/transactional-connection");
 const promotion_action_1 = require("../promotion-action");
 const facet_value_checker_1 = require("../utils/facet-value-checker");
 let facetValueChecker;

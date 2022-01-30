@@ -10,7 +10,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DefaultJobQueuePlugin = void 0;
 const plugin_common_module_1 = require("../plugin-common.module");
 const vendure_plugin_1 = require("../vendure-plugin");
+const job_record_buffer_entity_1 = require("./job-record-buffer.entity");
 const job_record_entity_1 = require("./job-record.entity");
+const sql_job_buffer_storage_strategy_1 = require("./sql-job-buffer-storage-strategy");
 const sql_job_queue_strategy_1 = require("./sql-job-queue-strategy");
 /**
  * @description
@@ -65,7 +67,7 @@ const sql_job_queue_strategy_1 = require("./sql-job-queue-strategy");
  * Defines the backoff strategy used when retrying failed jobs. In other words, if a job fails
  * and is configured to be re-tried, how long should we wait before the next attempt?
  *
- * By default a job will be retried as soon as possible, but in some cases this is not desirable. For example,
+ * By default, a job will be retried as soon as possible, but in some cases this is not desirable. For example,
  * a job may interact with an unreliable 3rd-party API which is sensitive to too many requests. In this case, an
  * exponential backoff may be used which progressively increases the delay between each subsequent retry.
  *
@@ -85,6 +87,15 @@ const sql_job_queue_strategy_1 = require("./sql-job-queue-strategy");
  *         // A default delay for all other queues
  *         return 1000;
  *       },
+ *       setRetries: (queueName, job) => {
+ *         if (queueName === 'send-email') {
+ *           // Override the default number of retries
+ *           // for the 'send-email' job because we have
+ *           // a very unreliable email service.
+ *           return 10;
+ *         }
+ *         return job.retries;
+ *       }
  *     }),
  *   ],
  * };
@@ -99,18 +110,26 @@ let DefaultJobQueuePlugin = DefaultJobQueuePlugin_1 = class DefaultJobQueuePlugi
         return DefaultJobQueuePlugin_1;
     }
 };
+/** @internal */
+DefaultJobQueuePlugin.options = {};
 DefaultJobQueuePlugin = DefaultJobQueuePlugin_1 = __decorate([
     vendure_plugin_1.VendurePlugin({
         imports: [plugin_common_module_1.PluginCommonModule],
-        entities: [job_record_entity_1.JobRecord],
+        entities: () => DefaultJobQueuePlugin_1.options.useDatabaseForBuffer === true
+            ? [job_record_entity_1.JobRecord, job_record_buffer_entity_1.JobRecordBuffer]
+            : [job_record_entity_1.JobRecord],
         configuration: config => {
             var _a;
-            const { pollInterval, concurrency, backoffStrategy } = (_a = DefaultJobQueuePlugin_1.options) !== null && _a !== void 0 ? _a : {};
+            const { pollInterval, concurrency, backoffStrategy, setRetries } = (_a = DefaultJobQueuePlugin_1.options) !== null && _a !== void 0 ? _a : {};
             config.jobQueueOptions.jobQueueStrategy = new sql_job_queue_strategy_1.SqlJobQueueStrategy({
                 concurrency,
                 pollInterval,
                 backoffStrategy,
+                setRetries,
             });
+            if (DefaultJobQueuePlugin_1.options.useDatabaseForBuffer === true) {
+                config.jobQueueOptions.jobBufferStorageStrategy = new sql_job_buffer_storage_strategy_1.SqlJobBufferStorageStrategy();
+            }
             return config;
         },
     })

@@ -25,3 +25,5 @@ export declare function addModifyOrderCustomFields(typeDefsOrSchema: string | Gr
  * fields in the `ModifyOrderInput` type.
  */
 export declare function addOrderLineCustomFieldsInput(typeDefsOrSchema: string | GraphQLSchema, orderLineCustomFields: CustomFieldConfig[]): GraphQLSchema;
+export declare function addShippingMethodQuoteCustomFields(typeDefsOrSchema: string | GraphQLSchema, shippingMethodCustomFields: CustomFieldConfig[]): GraphQLSchema;
+export declare function addPaymentMethodQuoteCustomFields(typeDefsOrSchema: string | GraphQLSchema, paymentMethodCustomFields: CustomFieldConfig[]): GraphQLSchema;

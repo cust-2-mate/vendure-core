@@ -1,8 +1,8 @@
 import { LanguageCode } from '@vendure/common/lib/generated-types';
 import { ID, Type } from '@vendure/common/lib/shared-types';
 import { RequestContext } from '../../../api/common/request-context';
+import { TransactionalConnection } from '../../../connection/transactional-connection';
 import { VendureEntity } from '../../../entity/base/base.entity';
-import { TransactionalConnection } from '../../transaction/transactional-connection';
 export declare type InputWithSlug = {
     id?: ID | null;
     translations?: Array<{

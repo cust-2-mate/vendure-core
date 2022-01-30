@@ -19,20 +19,29 @@ const constants_1 = require("../../common/constants");
 const errors_1 = require("../../common/error/errors");
 const utils_1 = require("../../common/utils");
 const config_service_1 = require("../../config/config.service");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const channel_entity_1 = require("../../entity/channel/channel.entity");
 const role_entity_1 = require("../../entity/role/role.entity");
 const user_entity_1 = require("../../entity/user/user.entity");
+const event_bus_1 = require("../../event-bus");
+const role_event_1 = require("../../event-bus/events/role-event");
 const list_query_builder_1 = require("../helpers/list-query-builder/list-query-builder");
 const get_user_channels_permissions_1 = require("../helpers/utils/get-user-channels-permissions");
 const patch_entity_1 = require("../helpers/utils/patch-entity");
-const transactional_connection_1 = require("../transaction/transactional-connection");
 const channel_service_1 = require("./channel.service");
+/**
+ * @description
+ * Contains methods relating to {@link Role} entities.
+ *
+ * @docsCategory services
+ */
 let RoleService = class RoleService {
-    constructor(connection, channelService, listQueryBuilder, configService) {
+    constructor(connection, channelService, listQueryBuilder, configService, eventBus) {
         this.connection = connection;
         this.channelService = channelService;
         this.listQueryBuilder = listQueryBuilder;
         this.configService = configService;
+        this.eventBus = eventBus;
     }
     async initRoles() {
         await this.ensureSuperAdminRoleExists();
@@ -56,6 +65,10 @@ let RoleService = class RoleService {
     getChannelsForRole(ctx, roleId) {
         return this.findOne(ctx, roleId).then(role => (role ? role.channels : []));
     }
+    /**
+     * @description
+     * Returns the special SuperAdmin Role, which always exists in Vendure.
+     */
     getSuperAdminRole() {
         return this.getRoleByCode(shared_constants_1.SUPER_ADMIN_ROLE_CODE).then(role => {
             if (!role) {
@@ -64,6 +77,10 @@ let RoleService = class RoleService {
             return role;
         });
     }
+    /**
+     * @description
+     * Returns the special Customer Role, which always exists in Vendure.
+     */
     getCustomerRole() {
         return this.getRoleByCode(shared_constants_1.CUSTOMER_ROLE_CODE).then(role => {
             if (!role) {
@@ -73,12 +90,14 @@ let RoleService = class RoleService {
         });
     }
     /**
+     * @description
      * Returns all the valid Permission values
      */
     getAllPermissions() {
         return Object.values(generated_types_1.Permission);
     }
     /**
+     * @description
      * Returns true if the User has the specified permission on that Channel
      */
     async userHasPermissionOnChannel(ctx, channelId, permission) {
@@ -104,7 +123,9 @@ let RoleService = class RoleService {
         else {
             targetChannels = [ctx.channel];
         }
-        return this.createRoleForChannels(ctx, input, targetChannels);
+        const role = await this.createRoleForChannels(ctx, input, targetChannels);
+        this.eventBus.publish(new role_event_1.RoleEvent(ctx, role, 'created', input));
+        return role;
     }
     async update(ctx, input) {
         this.checkPermissionsAreValid(input.permissions);
@@ -126,7 +147,8 @@ let RoleService = class RoleService {
             updatedRole.channels = await this.getPermittedChannels(ctx, input.channelIds);
         }
         await this.connection.getRepository(ctx, role_entity_1.Role).save(updatedRole, { reload: false });
-        return utils_1.assertFound(this.findOne(ctx, role.id));
+        this.eventBus.publish(new role_event_1.RoleEvent(ctx, role, 'updated', input));
+        return await utils_1.assertFound(this.findOne(ctx, role.id));
     }
     async delete(ctx, id) {
         const role = await this.findOne(ctx, id);
@@ -137,6 +159,7 @@ let RoleService = class RoleService {
             throw new errors_1.InternalServerError(`error.cannot-delete-role`, { roleCode: role.code });
         }
         await this.connection.getRepository(ctx, role_entity_1.Role).remove(role);
+        this.eventBus.publish(new role_event_1.RoleEvent(ctx, role, 'deleted', id));
         return {
             result: generated_types_1.DeletionResult.DELETED,
         };
@@ -183,11 +206,12 @@ let RoleService = class RoleService {
             await this.connection.getRepository(role_entity_1.Role).save(superAdminRole, { reload: false });
         }
         catch (err) {
+            const defaultChannel = await this.channelService.getDefaultChannel();
             await this.createRoleForChannels(request_context_1.RequestContext.empty(), {
                 code: shared_constants_1.SUPER_ADMIN_ROLE_CODE,
                 description: shared_constants_1.SUPER_ADMIN_ROLE_DESCRIPTION,
                 permissions: assignablePermissions,
-            }, [this.channelService.getDefaultChannel()]);
+            }, [defaultChannel]);
         }
     }
     /**
@@ -198,11 +222,12 @@ let RoleService = class RoleService {
             await this.getCustomerRole();
         }
         catch (err) {
+            const defaultChannel = await this.channelService.getDefaultChannel();
             await this.createRoleForChannels(request_context_1.RequestContext.empty(), {
                 code: shared_constants_1.CUSTOMER_ROLE_CODE,
                 description: shared_constants_1.CUSTOMER_ROLE_DESCRIPTION,
                 permissions: [generated_types_1.Permission.Authenticated],
-            }, [this.channelService.getDefaultChannel()]);
+            }, [defaultChannel]);
         }
     }
     /**
@@ -242,7 +267,8 @@ RoleService = __decorate([
     __metadata("design:paramtypes", [transactional_connection_1.TransactionalConnection,
         channel_service_1.ChannelService,
         list_query_builder_1.ListQueryBuilder,
-        config_service_1.ConfigService])
+        config_service_1.ConfigService,
+        event_bus_1.EventBus])
 ], RoleService);
 exports.RoleService = RoleService;
 //# sourceMappingURL=role.service.js.map

@@ -1,17 +1,25 @@
-import { RequestContext } from '../../api/common/request-context';
+import { CreateAssetInput, DeleteAssetInput, UpdateAssetInput } from '@vendure/common/lib/generated-types';
+import { ID } from '@vendure/common/lib/shared-types';
+import { RequestContext } from '../../api';
 import { Asset } from '../../entity';
-import { VendureEvent } from '../vendure-event';
+import { VendureEntityEvent } from '../vendure-entity-event';
+declare type AssetInputTypes = CreateAssetInput | UpdateAssetInput | DeleteAssetInput | ID;
 /**
  * @description
- * This event is fired whenever aa {@link Asset} is added, updated
- * or deleted.
+ * This event is fired whenever a {@link Asset} is added, updated or deleted.
  *
  * @docsCategory events
  * @docsPage Event Types
+ * @since 1.4
  */
-export declare class AssetEvent extends VendureEvent {
-    ctx: RequestContext;
-    asset: Asset;
-    type: 'created' | 'updated' | 'deleted';
-    constructor(ctx: RequestContext, asset: Asset, type: 'created' | 'updated' | 'deleted');
+export declare class AssetEvent extends VendureEntityEvent<Asset, AssetInputTypes> {
+    constructor(ctx: RequestContext, entity: Asset, type: 'created' | 'updated' | 'deleted', input?: AssetInputTypes);
+    /**
+     * Return an asset field to become compatible with the
+     * deprecated old version of AssetEvent
+     * @deprecated Use `entity` instead
+     * @since 1.4
+     */
+    get asset(): Asset;
 }
+export {};

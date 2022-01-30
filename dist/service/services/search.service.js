@@ -12,11 +12,15 @@ const generated_types_1 = require("@vendure/common/lib/generated-types");
 const vendure_logger_1 = require("../../config/logger/vendure-logger");
 const job_1 = require("../../job-queue/job");
 /**
+ * @description
  * This service allows a concrete search service to override its behaviour
  * by passing itself to the `adopt()` method.
+ *
+ * @docsCategory services
  */
 let SearchService = class SearchService {
     /**
+     * @description
      * Adopt a concrete search service implementation to pass through the
      * calls to.
      */

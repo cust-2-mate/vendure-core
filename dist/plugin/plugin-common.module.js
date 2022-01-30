@@ -10,6 +10,7 @@ exports.PluginCommonModule = void 0;
 const common_1 = require("@nestjs/common");
 const cache_module_1 = require("../cache/cache.module");
 const config_module_1 = require("../config/config.module");
+const connection_module_1 = require("../connection/connection.module");
 const event_bus_module_1 = require("../event-bus/event-bus.module");
 const health_check_module_1 = require("../health-check/health-check.module");
 const i18n_module_1 = require("../i18n/i18n.module");
@@ -39,7 +40,8 @@ PluginCommonModule = __decorate([
         imports: [
             event_bus_module_1.EventBusModule,
             config_module_1.ConfigModule,
-            service_module_1.ServiceModule.forPlugin(),
+            connection_module_1.ConnectionModule.forPlugin(),
+            service_module_1.ServiceModule,
             job_queue_module_1.JobQueueModule,
             health_check_module_1.HealthCheckModule,
             cache_module_1.CacheModule,
@@ -49,7 +51,8 @@ PluginCommonModule = __decorate([
         exports: [
             event_bus_module_1.EventBusModule,
             config_module_1.ConfigModule,
-            service_module_1.ServiceModule.forPlugin(),
+            connection_module_1.ConnectionModule.forPlugin(),
+            service_module_1.ServiceModule,
             job_queue_module_1.JobQueueModule,
             health_check_module_1.HealthCheckModule,
             cache_module_1.CacheModule,

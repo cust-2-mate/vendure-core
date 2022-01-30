@@ -42,7 +42,15 @@ export declare class OrderItem extends VendureEntity {
     cancellation: Cancellation;
     cancelled: boolean;
     get fulfillment(): Fulfillment | undefined;
+    /**
+     * @description
+     * The price of a single unit, excluding tax and discounts.
+     */
     get unitPrice(): number;
+    /**
+     * @description
+     * The price of a single unit, including tax but excluding discounts.
+     */
     get unitPriceWithTax(): number;
     /**
      * @description
@@ -51,9 +59,32 @@ export declare class OrderItem extends VendureEntity {
      */
     get taxRate(): number;
     get unitTax(): number;
+    /**
+     * @description
+     * The price of a single unit including discounts, excluding tax.
+     *
+     * If Order-level discounts have been applied, this will not be the
+     * actual taxable unit price (see `proratedUnitPrice`), but is generally the
+     * correct price to display to customers to avoid confusion
+     * about the internal handling of distributed Order-level discounts.
+     */
     get discountedUnitPrice(): number;
+    /**
+     * @description
+     * The price of a single unit including discounts and tax.
+     */
     get discountedUnitPriceWithTax(): number;
+    /**
+     * @description
+     * The actual unit price, taking into account both item discounts _and_ prorated (proportionally-distributed)
+     * Order-level discounts. This value is the true economic value of the OrderItem, and is used in tax
+     * and refund calculations.
+     */
     get proratedUnitPrice(): number;
+    /**
+     * @description
+     * The `proratedUnitPrice` including tax.
+     */
     get proratedUnitPriceWithTax(): number;
     get proratedUnitTax(): number;
     /**

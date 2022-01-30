@@ -1,9 +1,9 @@
 import { CreateProductInput, CreateProductOptionGroupInput, CreateProductOptionInput, CreateProductVariantInput } from '@vendure/common/lib/generated-types';
 import { ID } from '@vendure/common/lib/shared-types';
+import { TransactionalConnection } from '../../../connection/transactional-connection';
 import { TranslatableSaver } from '../../../service/helpers/translatable-saver/translatable-saver';
 import { ChannelService } from '../../../service/services/channel.service';
 import { StockMovementService } from '../../../service/services/stock-movement.service';
-import { TransactionalConnection } from '../../../service/transaction/transactional-connection';
 /**
  * A service to import entities into the database. This replaces the regular `create` methods of the service layer with faster
  * versions which skip much of the defensive checks and other DB calls which are not needed when running an import.

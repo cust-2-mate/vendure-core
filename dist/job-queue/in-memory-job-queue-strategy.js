@@ -60,6 +60,7 @@ class InMemoryJobQueueStrategy extends polling_job_queue_strategy_1.PollingJobQu
                 .toString()
                 .padEnd(10, '0');
         }
+        job.retries = this.setRetries(job.queueName, job);
         // tslint:disable-next-line:no-non-null-assertion
         this.jobs.set(job.id, job);
         if (!this.unsettledJobs[job.queueName]) {

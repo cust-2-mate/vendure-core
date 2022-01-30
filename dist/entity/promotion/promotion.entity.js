@@ -16,6 +16,7 @@ const adjustment_source_1 = require("../../common/types/adjustment-source");
 const config_helpers_1 = require("../../config/config-helpers");
 const promotion_action_1 = require("../../config/promotion/promotion-action");
 const channel_entity_1 = require("../channel/channel.entity");
+const custom_entity_fields_1 = require("../custom-entity-fields");
 /**
  * @description
  * A Promotion is used to define a set of conditions under which promotions actions (typically discounts)
@@ -142,6 +143,10 @@ __decorate([
     typeorm_1.JoinTable(),
     __metadata("design:type", Array)
 ], Promotion.prototype, "channels", void 0);
+__decorate([
+    typeorm_1.Column(type => custom_entity_fields_1.CustomPromotionFields),
+    __metadata("design:type", custom_entity_fields_1.CustomPromotionFields)
+], Promotion.prototype, "customFields", void 0);
 __decorate([
     typeorm_1.Column('simple-json'),
     __metadata("design:type", Array)

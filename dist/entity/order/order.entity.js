@@ -15,6 +15,7 @@ const generated_types_1 = require("@vendure/common/lib/generated-types");
 const shared_utils_1 = require("@vendure/common/lib/shared-utils");
 const typeorm_1 = require("typeorm");
 const calculated_decorator_1 = require("../../common/calculated-decorator");
+const errors_1 = require("../../common/error/errors");
 const base_entity_1 = require("../base/base.entity");
 const channel_entity_1 = require("../channel/channel.entity");
 const custom_entity_fields_1 = require("../custom-entity-fields");
@@ -42,6 +43,7 @@ let Order = Order_1 = class Order extends base_entity_1.VendureEntity {
         super(input);
     }
     get discounts() {
+        this.throwIfLinesNotJoined('discounts');
         const groupedAdjustments = new Map();
         for (const line of this.lines) {
             for (const discount of line.discounts) {
@@ -69,16 +71,30 @@ let Order = Order_1 = class Order extends base_entity_1.VendureEntity {
         }
         return [...groupedAdjustments.values()];
     }
+    /**
+     * @description
+     * Equal to `subTotal` plus `shipping`
+     */
     get total() {
         return this.subTotal + (this.shipping || 0);
     }
+    /**
+     * @description
+     * The final payable amount. Equal to `subTotalWithTax` plus `shippingWithTax`.
+     */
     get totalWithTax() {
         return this.subTotalWithTax + (this.shippingWithTax || 0);
     }
     get totalQuantity() {
+        this.throwIfLinesNotJoined('totalQuantity');
         return shared_utils_1.summate(this.lines, 'quantity');
     }
+    /**
+     * @description
+     * A summary of the taxes being applied to this Order.
+     */
     get taxSummary() {
+        this.throwIfLinesNotJoined('taxSummary');
         const taxRateMap = new Map();
         const taxId = (taxLine) => `${taxLine.description}:${taxLine.taxRate}`;
         const taxableLines = [...this.lines, ...this.shippingLines];
@@ -113,9 +129,19 @@ let Order = Order_1 = class Order extends base_entity_1.VendureEntity {
         }));
     }
     getOrderItems() {
+        this.throwIfLinesNotJoined('getOrderItems');
         return this.lines.reduce((items, line) => {
             return [...items, ...line.items];
         }, []);
+    }
+    throwIfLinesNotJoined(propertyName) {
+        if (this.lines == null) {
+            const errorMessage = [
+                `The property "${propertyName}" on the Order entity requires the Order.lines relation to be joined.`,
+                `This can be done with the EntityHydratorService: \`await entityHydratorService.hydrate(ctx, order, { relations: ['lines'] })\``,
+            ];
+            throw new errors_1.InternalServerError(errorMessage.join('\n'));
+        }
     }
 };
 __decorate([

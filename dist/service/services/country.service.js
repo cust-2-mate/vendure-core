@@ -14,20 +14,27 @@ const common_1 = require("@nestjs/common");
 const generated_types_1 = require("@vendure/common/lib/generated-types");
 const errors_1 = require("../../common/error/errors");
 const utils_1 = require("../../common/utils");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const entity_1 = require("../../entity");
 const country_translation_entity_1 = require("../../entity/country/country-translation.entity");
 const country_entity_1 = require("../../entity/country/country.entity");
+const event_bus_1 = require("../../event-bus");
+const country_event_1 = require("../../event-bus/events/country-event");
 const list_query_builder_1 = require("../helpers/list-query-builder/list-query-builder");
 const translatable_saver_1 = require("../helpers/translatable-saver/translatable-saver");
 const translate_entity_1 = require("../helpers/utils/translate-entity");
-const transactional_connection_1 = require("../transaction/transactional-connection");
-const zone_service_1 = require("./zone.service");
+/**
+ * @description
+ * Contains methods relating to {@link Country} entities.
+ *
+ * @docsCategory services
+ */
 let CountryService = class CountryService {
-    constructor(connection, listQueryBuilder, translatableSaver, zoneService) {
+    constructor(connection, listQueryBuilder, translatableSaver, eventBus) {
         this.connection = connection;
         this.listQueryBuilder = listQueryBuilder;
         this.translatableSaver = translatableSaver;
-        this.zoneService = zoneService;
+        this.eventBus = eventBus;
     }
     findAll(ctx, options) {
         return this.listQueryBuilder
@@ -48,6 +55,7 @@ let CountryService = class CountryService {
             .then(country => country && translate_entity_1.translateDeep(country, ctx.languageCode));
     }
     /**
+     * @description
      * Returns an array of enabled Countries, intended for use in a public-facing (ie. Shop) API.
      */
     findAllAvailable(ctx) {
@@ -56,6 +64,10 @@ let CountryService = class CountryService {
             .find({ where: { enabled: true } })
             .then(items => items.map(country => translate_entity_1.translateDeep(country, ctx.languageCode)));
     }
+    /**
+     * @description
+     * Returns a Country based on its ISO country code.
+     */
     async findOneByCode(ctx, countryCode) {
         const country = await this.connection.getRepository(ctx, country_entity_1.Country).findOne({
             where: {
@@ -74,7 +86,7 @@ let CountryService = class CountryService {
             entityType: country_entity_1.Country,
             translationType: country_translation_entity_1.CountryTranslation,
         });
-        await this.zoneService.updateZonesCache(ctx);
+        this.eventBus.publish(new country_event_1.CountryEvent(ctx, country, 'created', input));
         return utils_1.assertFound(this.findOne(ctx, country.id));
     }
     async update(ctx, input) {
@@ -84,7 +96,7 @@ let CountryService = class CountryService {
             entityType: country_entity_1.Country,
             translationType: country_translation_entity_1.CountryTranslation,
         });
-        await this.zoneService.updateZonesCache(ctx);
+        this.eventBus.publish(new country_event_1.CountryEvent(ctx, country, 'updated', input));
         return utils_1.assertFound(this.findOne(ctx, country.id));
     }
     async delete(ctx, id) {
@@ -101,8 +113,8 @@ let CountryService = class CountryService {
             };
         }
         else {
-            await this.zoneService.updateZonesCache(ctx);
             await this.connection.getRepository(ctx, country_entity_1.Country).remove(country);
+            this.eventBus.publish(new country_event_1.CountryEvent(ctx, country, 'deleted', id));
             return {
                 result: generated_types_1.DeletionResult.DELETED,
                 message: '',
@@ -115,7 +127,7 @@ CountryService = __decorate([
     __metadata("design:paramtypes", [transactional_connection_1.TransactionalConnection,
         list_query_builder_1.ListQueryBuilder,
         translatable_saver_1.TranslatableSaver,
-        zone_service_1.ZoneService])
+        event_bus_1.EventBus])
 ], CountryService);
 exports.CountryService = CountryService;
 //# sourceMappingURL=country.service.js.map

@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SlugValidator = void 0;
 const common_1 = require("@nestjs/common");
 const normalize_string_1 = require("@vendure/common/lib/normalize-string");
-const transactional_connection_1 = require("../../transaction/transactional-connection");
+const transactional_connection_1 = require("../../../connection/transactional-connection");
 let SlugValidator = class SlugValidator {
     constructor(connection) {
         this.connection = connection;

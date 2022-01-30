@@ -14,13 +14,22 @@ const common_1 = require("@nestjs/common");
 const generated_types_1 = require("@vendure/common/lib/generated-types");
 const errors_1 = require("../../common/error/errors");
 const utils_1 = require("../../common/utils");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const tax_category_entity_1 = require("../../entity/tax-category/tax-category.entity");
 const tax_rate_entity_1 = require("../../entity/tax-rate/tax-rate.entity");
+const event_bus_1 = require("../../event-bus");
+const tax_category_event_1 = require("../../event-bus/events/tax-category-event");
 const patch_entity_1 = require("../helpers/utils/patch-entity");
-const transactional_connection_1 = require("../transaction/transactional-connection");
+/**
+ * @description
+ * Contains methods relating to {@link TaxCategory} entities.
+ *
+ * @docsCategory services
+ */
 let TaxCategoryService = class TaxCategoryService {
-    constructor(connection) {
+    constructor(connection, eventBus) {
         this.connection = connection;
+        this.eventBus = eventBus;
     }
     findAll(ctx) {
         return this.connection.getRepository(ctx, tax_category_entity_1.TaxCategory).find();
@@ -36,6 +45,7 @@ let TaxCategoryService = class TaxCategoryService {
                 .update({ isDefault: true }, { isDefault: false });
         }
         const newTaxCategory = await this.connection.getRepository(ctx, tax_category_entity_1.TaxCategory).save(taxCategory);
+        this.eventBus.publish(new tax_category_event_1.TaxCategoryEvent(ctx, newTaxCategory, 'created', input));
         return utils_1.assertFound(this.findOne(ctx, newTaxCategory.id));
     }
     async update(ctx, input) {
@@ -50,6 +60,7 @@ let TaxCategoryService = class TaxCategoryService {
                 .update({ isDefault: true }, { isDefault: false });
         }
         await this.connection.getRepository(ctx, tax_category_entity_1.TaxCategory).save(updatedTaxCategory, { reload: false });
+        this.eventBus.publish(new tax_category_event_1.TaxCategoryEvent(ctx, taxCategory, 'updated', input));
         return utils_1.assertFound(this.findOne(ctx, taxCategory.id));
     }
     async delete(ctx, id) {
@@ -69,6 +80,7 @@ let TaxCategoryService = class TaxCategoryService {
         }
         try {
             await this.connection.getRepository(ctx, tax_category_entity_1.TaxCategory).remove(taxCategory);
+            this.eventBus.publish(new tax_category_event_1.TaxCategoryEvent(ctx, taxCategory, 'deleted', id));
             return {
                 result: generated_types_1.DeletionResult.DELETED,
             };
@@ -83,7 +95,7 @@ let TaxCategoryService = class TaxCategoryService {
 };
 TaxCategoryService = __decorate([
     common_1.Injectable(),
-    __metadata("design:paramtypes", [transactional_connection_1.TransactionalConnection])
+    __metadata("design:paramtypes", [transactional_connection_1.TransactionalConnection, event_bus_1.EventBus])
 ], TaxCategoryService);
 exports.TaxCategoryService = TaxCategoryService;
 //# sourceMappingURL=tax-category.service.js.map

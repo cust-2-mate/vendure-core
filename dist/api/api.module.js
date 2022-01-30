@@ -18,6 +18,7 @@ const core_1 = require("@nestjs/core");
 const graphql_upload_1 = require("graphql-upload");
 const path_1 = __importDefault(require("path"));
 const config_service_1 = require("../config/config.service");
+const connection_module_1 = require("../connection/connection.module");
 const data_import_module_1 = require("../data-import/data-import.module");
 const i18n_module_1 = require("../i18n/i18n.module");
 const service_module_1 = require("../service/service.module");
@@ -49,7 +50,8 @@ let ApiModule = class ApiModule {
 ApiModule = __decorate([
     common_1.Module({
         imports: [
-            service_module_1.ServiceModule.forRoot(),
+            service_module_1.ServiceModule,
+            connection_module_1.ConnectionModule.forRoot(),
             data_import_module_1.DataImportModule,
             i18n_module_1.I18nModule,
             api_internal_modules_1.ApiSharedModule,

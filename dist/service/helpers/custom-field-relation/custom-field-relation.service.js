@@ -14,7 +14,7 @@ const common_1 = require("@nestjs/common");
 const pick_1 = require("@vendure/common/lib/pick");
 const shared_utils_1 = require("@vendure/common/lib/shared-utils");
 const config_service_1 = require("../../../config/config.service");
-const transactional_connection_1 = require("../../transaction/transactional-connection");
+const transactional_connection_1 = require("../../../connection/transactional-connection");
 let CustomFieldRelationService = class CustomFieldRelationService {
     constructor(connection, configService) {
         this.connection = connection;

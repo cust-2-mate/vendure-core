@@ -30,7 +30,7 @@ function getFromCookie(req) {
 function getFromHeader(req) {
     const authHeader = req.get('Authorization');
     if (authHeader) {
-        const matches = authHeader.match(/bearer\s+(.+)$/i);
+        const matches = authHeader.trim().match(/^bearer\s(.+)$/i);
         if (matches) {
             return matches[1];
         }

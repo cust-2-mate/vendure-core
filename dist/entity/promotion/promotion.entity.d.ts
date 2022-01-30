@@ -3,9 +3,11 @@ import { DeepPartial } from '@vendure/common/lib/shared-types';
 import { RequestContext } from '../../api/common/request-context';
 import { AdjustmentSource } from '../../common/types/adjustment-source';
 import { ChannelAware, SoftDeletable } from '../../common/types/common-types';
+import { HasCustomFields } from '../../config/custom-field/custom-field-types';
 import { PromotionAction } from '../../config/promotion/promotion-action';
 import { PromotionCondition, PromotionConditionState } from '../../config/promotion/promotion-condition';
 import { Channel } from '../channel/channel.entity';
+import { CustomPromotionFields } from '../custom-entity-fields';
 import { OrderItem } from '../order-item/order-item.entity';
 import { OrderLine } from '../order-line/order-line.entity';
 import { Order } from '../order/order.entity';
@@ -35,7 +37,7 @@ export declare type PromotionTestResult = boolean | PromotionState;
  *
  * @docsCategory entities
  */
-export declare class Promotion extends AdjustmentSource implements ChannelAware, SoftDeletable {
+export declare class Promotion extends AdjustmentSource implements ChannelAware, SoftDeletable, HasCustomFields {
     type: AdjustmentType;
     private readonly allConditions;
     private readonly allActions;
@@ -51,6 +53,7 @@ export declare class Promotion extends AdjustmentSource implements ChannelAware,
     name: string;
     enabled: boolean;
     channels: Channel[];
+    customFields: CustomPromotionFields;
     conditions: ConfigurableOperation[];
     actions: ConfigurableOperation[];
     /**

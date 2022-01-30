@@ -140,7 +140,7 @@ class ConfigurableOperationDef {
     argsArrayToHash(args) {
         const output = {};
         for (const arg of args) {
-            if (arg && arg.value != null) {
+            if (arg && arg.value != null && this.args[arg.name] != null) {
                 output[arg.name] = coerceValueToType(arg.value, this.args[arg.name].type, this.args[arg.name].list || false);
             }
         }

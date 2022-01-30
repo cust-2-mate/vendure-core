@@ -9,7 +9,7 @@ export declare const containsProducts: PromotionCondition<{
         type: "ID";
         list: true;
         ui: {
-            component: "product-selector-form-input";
+            component: string;
         };
         label: {
             languageCode: LanguageCode.en;

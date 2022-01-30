@@ -10,6 +10,7 @@ exports.ShopApiModule = exports.AdminApiModule = exports.ApiSharedModule = expor
 const common_1 = require("@nestjs/common");
 const cache_module_1 = require("../cache/cache.module");
 const config_module_1 = require("../config/config.module");
+const connection_module_1 = require("../connection/connection.module");
 const data_import_module_1 = require("../data-import/data-import.module");
 const job_queue_module_1 = require("../job-queue/job-queue.module");
 const dynamic_plugin_api_module_1 = require("../plugin/dynamic-plugin-api.module");
@@ -143,7 +144,7 @@ let ApiSharedModule = class ApiSharedModule {
 };
 ApiSharedModule = __decorate([
     common_1.Module({
-        imports: [config_module_1.ConfigModule, service_module_1.ServiceModule.forRoot(), cache_module_1.CacheModule],
+        imports: [config_module_1.ConfigModule, service_module_1.ServiceModule, cache_module_1.CacheModule, connection_module_1.ConnectionModule.forRoot()],
         providers: [id_codec_service_1.IdCodecService, configurable_operation_codec_1.ConfigurableOperationCodec, custom_field_relation_resolver_service_1.CustomFieldRelationResolverService],
         exports: [
             id_codec_service_1.IdCodecService,
@@ -151,7 +152,8 @@ ApiSharedModule = __decorate([
             config_module_1.ConfigModule,
             configurable_operation_codec_1.ConfigurableOperationCodec,
             custom_field_relation_resolver_service_1.CustomFieldRelationResolverService,
-            service_module_1.ServiceModule.forRoot(),
+            service_module_1.ServiceModule,
+            connection_module_1.ConnectionModule.forRoot(),
         ],
     })
 ], ApiSharedModule);

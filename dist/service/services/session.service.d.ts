@@ -3,13 +3,19 @@ import { EntitySubscriberInterface, InsertEvent, RemoveEvent, UpdateEvent } from
 import { RequestContext } from '../../api/common/request-context';
 import { ConfigService } from '../../config/config.service';
 import { CachedSession } from '../../config/session-cache/session-cache-strategy';
+import { TransactionalConnection } from '../../connection/transactional-connection';
 import { Channel } from '../../entity/channel/channel.entity';
 import { Order } from '../../entity/order/order.entity';
 import { AnonymousSession } from '../../entity/session/anonymous-session.entity';
 import { AuthenticatedSession } from '../../entity/session/authenticated-session.entity';
 import { User } from '../../entity/user/user.entity';
-import { TransactionalConnection } from '../transaction/transactional-connection';
 import { OrderService } from './order.service';
+/**
+ * @description
+ * Contains methods relating to {@link Session} entities.
+ *
+ * @docsCategory services
+ */
 export declare class SessionService implements EntitySubscriberInterface {
     private connection;
     private configService;
@@ -17,29 +23,60 @@ export declare class SessionService implements EntitySubscriberInterface {
     private sessionCacheStrategy;
     private readonly sessionDurationInMs;
     constructor(connection: TransactionalConnection, configService: ConfigService, orderService: OrderService);
+    /** @internal */
     afterInsert(event: InsertEvent<any>): Promise<any> | void;
+    /** @internal */
     afterRemove(event: RemoveEvent<any>): Promise<any> | void;
+    /** @internal */
     afterUpdate(event: UpdateEvent<any>): Promise<any> | void;
     private clearSessionCacheOnDataChange;
+    /**
+     * @description
+     * Creates a new {@link AuthenticatedSession}. To be used after successful authentication.
+     */
     createNewAuthenticatedSession(ctx: RequestContext, user: User, authenticationStrategyName: string): Promise<AuthenticatedSession>;
     /**
-     * Create an anonymous session.
+     * @description
+     * Create an {@link AnonymousSession} and caches it using the configured {@link SessionCacheStrategy},
+     * and returns the cached session object.
      */
     createAnonymousSession(): Promise<CachedSession>;
+    /**
+     * @description
+     * Returns the cached session object matching the given session token.
+     */
     getSessionFromToken(sessionToken: string): Promise<CachedSession | undefined>;
+    /**
+     * @description
+     * Serializes a {@link Session} instance into a simplified plain object suitable for caching.
+     */
     serializeSession(session: AuthenticatedSession | AnonymousSession): CachedSession;
     /**
      * Looks for a valid session with the given token and returns one if found.
      */
     private findSessionByToken;
+    /**
+     * @description
+     * Sets the `activeOrder` on the given cached session object and updates the cache.
+     */
     setActiveOrder(ctx: RequestContext, serializedSession: CachedSession, order: Order): Promise<CachedSession>;
+    /**
+     * @description
+     * Clears the `activeOrder` on the given cached session object and updates the cache.
+     */
     unsetActiveOrder(ctx: RequestContext, serializedSession: CachedSession): Promise<CachedSession>;
+    /**
+     * @description
+     * Sets the `activeChannel` on the given cached session object and updates the cache.
+     */
     setActiveChannel(serializedSession: CachedSession, channel: Channel): Promise<CachedSession>;
     /**
+     * @description
      * Deletes all existing sessions for the given user.
      */
     deleteSessionsByUser(ctx: RequestContext, user: User): Promise<void>;
     /**
+     * @description
      * Deletes all existing sessions with the given activeOrder.
      */
     deleteSessionsByActiveOrderId(ctx: RequestContext, activeOrderId: ID): Promise<void>;

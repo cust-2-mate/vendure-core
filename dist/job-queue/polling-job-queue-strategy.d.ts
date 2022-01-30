@@ -28,6 +28,14 @@ export interface PollingJobQueueStrategyConfig {
     pollInterval?: number | ((queueName: string) => number);
     /**
      * @description
+     * When a job is added to the JobQueue using `JobQueue.add()`, the calling
+     * code may specify the number of retries in case of failure. This option allows
+     * you to override that number and specify your own number of retries based on
+     * the job being added.
+     */
+    setRetries?: (queueName: string, job: Job) => number;
+    /**
+     * @description
      * The strategy used to decide how long to wait before retrying a failed job.
      *
      * @default () => 1000
@@ -47,6 +55,7 @@ export interface PollingJobQueueStrategyConfig {
 export declare abstract class PollingJobQueueStrategy extends InjectableJobQueueStrategy {
     concurrency: number;
     pollInterval: number | ((queueName: string) => number);
+    setRetries: (queueName: string, job: Job) => number;
     backOffStrategy?: BackoffStrategy;
     private activeQueues;
     constructor(config?: PollingJobQueueStrategyConfig);

@@ -15,6 +15,7 @@ const api_module_1 = require("./api/api.module");
 const config_module_1 = require("./config/config.module");
 const config_service_1 = require("./config/config.service");
 const vendure_logger_1 = require("./config/logger/vendure-logger");
+const connection_module_1 = require("./connection/connection.module");
 const health_check_module_1 = require("./health-check/health-check.module");
 const i18n_module_1 = require("./i18n/i18n.module");
 const i18n_service_1 = require("./i18n/i18n.service");
@@ -69,7 +70,8 @@ AppModule = __decorate([
             api_module_1.ApiModule,
             plugin_module_1.PluginModule.forRoot(),
             health_check_module_1.HealthCheckModule,
-            service_module_1.ServiceModule.forRoot(),
+            service_module_1.ServiceModule,
+            connection_module_1.ConnectionModule,
         ],
     }),
     __metadata("design:paramtypes", [config_service_1.ConfigService, i18n_service_1.I18nService])

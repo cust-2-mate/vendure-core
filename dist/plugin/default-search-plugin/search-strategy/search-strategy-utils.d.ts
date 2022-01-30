@@ -18,3 +18,4 @@ export declare function createFacetIdCountMap(facetValuesResult: Array<{
 export declare function createCollectionIdCountMap(collectionsResult: Array<{
     collections: string;
 }>): Map<ID, number>;
+export declare function createPlaceholderFromId(id: ID): string;

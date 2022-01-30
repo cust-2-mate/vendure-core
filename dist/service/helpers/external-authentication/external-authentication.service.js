@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ExternalAuthenticationService = void 0;
 const common_1 = require("@nestjs/common");
 const generated_types_1 = require("@vendure/common/lib/generated-types");
+const transactional_connection_1 = require("../../../connection/transactional-connection");
 const administrator_entity_1 = require("../../../entity/administrator/administrator.entity");
 const external_authentication_method_entity_1 = require("../../../entity/authentication-method/external-authentication-method.entity");
 const customer_entity_1 = require("../../../entity/customer/customer.entity");
@@ -21,7 +22,6 @@ const channel_service_1 = require("../../services/channel.service");
 const customer_service_1 = require("../../services/customer.service");
 const history_service_1 = require("../../services/history.service");
 const role_service_1 = require("../../services/role.service");
-const transactional_connection_1 = require("../../transaction/transactional-connection");
 /**
  * @description
  * This is a helper service which exposes methods related to looking up and creating Users based on an
@@ -109,7 +109,7 @@ let ExternalAuthenticationService = class ExternalAuthenticationService {
                 user: savedUser,
             });
         }
-        this.channelService.assignToCurrentChannel(customer, ctx);
+        await this.channelService.assignToCurrentChannel(customer, ctx);
         await this.connection.getRepository(ctx, customer_entity_1.Customer).save(customer);
         await this.historyService.createHistoryEntryForCustomer({
             customerId: customer.id,

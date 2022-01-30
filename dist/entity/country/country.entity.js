@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Country = void 0;
 const typeorm_1 = require("typeorm");
 const base_entity_1 = require("../base/base.entity");
+const custom_entity_fields_1 = require("../custom-entity-fields");
 const country_translation_entity_1 = require("./country-translation.entity");
 /**
  * @description
@@ -38,6 +39,10 @@ __decorate([
     typeorm_1.OneToMany(type => country_translation_entity_1.CountryTranslation, translation => translation.base, { eager: true }),
     __metadata("design:type", Array)
 ], Country.prototype, "translations", void 0);
+__decorate([
+    typeorm_1.Column(type => custom_entity_fields_1.CustomCountryFields),
+    __metadata("design:type", custom_entity_fields_1.CustomCountryFields)
+], Country.prototype, "customFields", void 0);
 Country = __decorate([
     typeorm_1.Entity(),
     __metadata("design:paramtypes", [Object])

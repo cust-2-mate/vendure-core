@@ -14,6 +14,13 @@ const generated_types_1 = require("@vendure/common/lib/generated-types");
 const typeorm_1 = require("typeorm");
 const administrator_entity_1 = require("../administrator/administrator.entity");
 const base_entity_1 = require("../base/base.entity");
+/**
+ * @description
+ * An abstract entity representing an entry in the history of an Order ({@link OrderHistoryEntry})
+ * or a Customer ({@link CustomerHistoryEntry}).
+ *
+ * @docsCategory entities
+ */
 let HistoryEntry = class HistoryEntry extends base_entity_1.VendureEntity {
 };
 __decorate([

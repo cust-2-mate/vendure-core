@@ -1,3 +1,4 @@
+import { LogicalOperator } from '@vendure/common/lib/generated-types';
 import { Type } from '@vendure/common/lib/shared-types';
 import { VendureEntity } from '../../entity/base/base.entity';
 import { Channel } from '../../entity/channel/channel.entity';
@@ -62,6 +63,7 @@ export interface ListQueryOptions<T extends VendureEntity> {
     skip?: number | null;
     sort?: NullOptionals<SortParameter<T>> | null;
     filter?: NullOptionals<FilterParameter<T>> | null;
+    filterOperator?: LogicalOperator;
 }
 /**
  * Returns a type T where any optional fields also have the "null" type added.

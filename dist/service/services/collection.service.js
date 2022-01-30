@@ -21,10 +21,12 @@ const errors_1 = require("../../common/error/errors");
 const utils_1 = require("../../common/utils");
 const config_service_1 = require("../../config/config.service");
 const vendure_logger_1 = require("../../config/logger/vendure-logger");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const collection_translation_entity_1 = require("../../entity/collection/collection-translation.entity");
 const collection_entity_1 = require("../../entity/collection/collection.entity");
 const product_variant_entity_1 = require("../../entity/product-variant/product-variant.entity");
 const event_bus_1 = require("../../event-bus/event-bus");
+const collection_event_1 = require("../../event-bus/events/collection-event");
 const collection_modification_event_1 = require("../../event-bus/events/collection-modification-event");
 const product_event_1 = require("../../event-bus/events/product-event");
 const product_variant_event_1 = require("../../event-bus/events/product-variant-event");
@@ -36,10 +38,15 @@ const slug_validator_1 = require("../helpers/slug-validator/slug-validator");
 const translatable_saver_1 = require("../helpers/translatable-saver/translatable-saver");
 const move_to_index_1 = require("../helpers/utils/move-to-index");
 const translate_entity_1 = require("../helpers/utils/translate-entity");
-const transactional_connection_1 = require("../transaction/transactional-connection");
 const asset_service_1 = require("./asset.service");
 const channel_service_1 = require("./channel.service");
 const facet_value_service_1 = require("./facet-value.service");
+/**
+ * @description
+ * Contains methods relating to {@link Collection} entities.
+ *
+ * @docsCategory services
+ */
 let CollectionService = class CollectionService {
     constructor(connection, channelService, assetService, facetValueService, listQueryBuilder, translatableSaver, eventBus, jobQueueService, configService, slugValidator, configArgService, customFieldRelationService) {
         this.connection = connection;
@@ -55,6 +62,9 @@ let CollectionService = class CollectionService {
         this.configArgService = configArgService;
         this.customFieldRelationService = customFieldRelationService;
     }
+    /**
+     * @internal
+     */
     async onModuleInit() {
         const productEvents$ = this.eventBus.ofType(product_event_1.ProductEvent);
         const variantEvents$ = this.eventBus.ofType(product_variant_event_1.ProductVariantEvent);
@@ -144,6 +154,10 @@ let CollectionService = class CollectionService {
         const bestMatch = (_b = (_a = translations.find(t => t.languageCode === ctx.languageCode)) !== null && _a !== void 0 ? _a : translations.find(t => t.languageCode === ctx.channel.defaultLanguageCode)) !== null && _b !== void 0 ? _b : translations[0];
         return this.findOne(ctx, bestMatch.base.id);
     }
+    /**
+     * @description
+     * Returns all configured CollectionFilters, as specified by the {@link CatalogOptions}.
+     */
     getAvailableFilters(ctx) {
         return this.configService.catalogOptions.collectionFilters.map(f => f.toGraphQlType(ctx));
     }
@@ -164,9 +178,18 @@ let CollectionService = class CollectionService {
             .getOne();
         return parent && translate_entity_1.translateDeep(parent, ctx.languageCode);
     }
+    /**
+     * @description
+     * Returns all child Collections of the Collection with the given id.
+     */
     async getChildren(ctx, collectionId) {
         return this.getDescendants(ctx, collectionId, 1);
     }
+    /**
+     * @description
+     * Returns an array of name/id pairs representing all ancestor Collections up
+     * to the Root Collection.
+     */
     async getBreadcrumbs(ctx, collection) {
         const rootCollection = await this.getRootCollection(ctx);
         if (utils_1.idsAreEqual(collection.id, rootCollection.id)) {
@@ -176,6 +199,10 @@ let CollectionService = class CollectionService {
         const ancestors = await this.getAncestors(collection.id, ctx);
         return [pickProps(rootCollection), ...ancestors.map(pickProps).reverse(), pickProps(collection)];
     }
+    /**
+     * @description
+     * Returns all Collections which are associated with the given Product ID.
+     */
     async getCollectionsByProductId(ctx, productId, publicOnly) {
         const qb = this.connection
             .getRepository(ctx, collection_entity_1.Collection)
@@ -192,6 +219,7 @@ let CollectionService = class CollectionService {
         return result.map(collection => translate_entity_1.translateDeep(collection, ctx.languageCode));
     }
     /**
+     * @description
      * Returns the descendants of a Collection as a flat array. The depth of the traversal can be limited
      * with the maxDepth argument. So to get only the immediate children, set maxDepth = 1.
      */
@@ -199,7 +227,7 @@ let CollectionService = class CollectionService {
         const getChildren = async (id, _descendants = [], depth = 1) => {
             const children = await this.connection
                 .getRepository(ctx, collection_entity_1.Collection)
-                .find({ where: { parent: { id } } });
+                .find({ where: { parent: { id } }, order: { position: 'ASC' } });
             for (const child of children) {
                 _descendants.push(child);
                 if (depth < maxDepth) {
@@ -261,11 +289,12 @@ let CollectionService = class CollectionService {
             },
         });
         await this.assetService.updateEntityAssets(ctx, collection, input);
-        await this.customFieldRelationService.updateRelations(ctx, collection_entity_1.Collection, input, collection);
+        const collectionWithRelations = await this.customFieldRelationService.updateRelations(ctx, collection_entity_1.Collection, input, collection);
         await this.applyFiltersQueue.add({
             ctx: ctx.serialize(),
             collectionIds: [collection.id],
         });
+        this.eventBus.publish(new collection_event_1.CollectionEvent(ctx, collectionWithRelations, 'created', input));
         return utils_1.assertFound(this.findOne(ctx, collection.id));
     }
     async update(ctx, input) {
@@ -295,6 +324,7 @@ let CollectionService = class CollectionService {
             const affectedVariantIds = await this.getCollectionProductVariantIds(collection);
             this.eventBus.publish(new collection_modification_event_1.CollectionModificationEvent(ctx, collection, affectedVariantIds));
         }
+        this.eventBus.publish(new collection_event_1.CollectionEvent(ctx, collection, 'updated', input));
         return utils_1.assertFound(this.findOne(ctx, collection.id));
     }
     async delete(ctx, id) {
@@ -307,10 +337,16 @@ let CollectionService = class CollectionService {
             await this.connection.getRepository(ctx, collection_entity_1.Collection).remove(coll);
             this.eventBus.publish(new collection_modification_event_1.CollectionModificationEvent(ctx, coll, affectedVariantIds));
         }
+        this.eventBus.publish(new collection_event_1.CollectionEvent(ctx, collection, 'deleted', id));
         return {
             result: generated_types_1.DeletionResult.DELETED,
         };
     }
+    /**
+     * @description
+     * Moves a Collection by specifying the parent Collection ID, and an index representing the order amongst
+     * its siblings.
+     */
     async move(ctx, input) {
         const target = await this.connection.getEntityOrThrow(ctx, collection_entity_1.Collection, input.collectionId, {
             channelId: ctx.channelId,
@@ -350,8 +386,8 @@ let CollectionService = class CollectionService {
     /**
      * Applies the CollectionFilters
      *
-     * If applyToChangedVariantsOnly (default: true) is true, than apply collection job will process only changed variants
-     * If applyToChangedVariantsOnly (default: true) is false, than apply collection job will process all variants
+     * If applyToChangedVariantsOnly (default: true) is true, then apply collection job will process only changed variants
+     * If applyToChangedVariantsOnly (default: true) is false, then apply collection job will process all variants
      * This param is used when we update collection and collection filters are changed to update all
      * variants (because other attributes of collection can be changed https://github.com/vendure-ecommerce/vendure/issues/1015)
      */
@@ -381,16 +417,10 @@ let CollectionService = class CollectionService {
         const preIdsSet = new Set(preIds);
         const postIdsSet = new Set(postIds);
         if (applyToChangedVariantsOnly) {
-            return [
-                ...preIds.filter(id => !postIdsSet.has(id)),
-                ...postIds.filter(id => !preIdsSet.has(id)),
-            ];
+            return [...preIds.filter(id => !postIdsSet.has(id)), ...postIds.filter(id => !preIdsSet.has(id))];
         }
         else {
-            return [
-                ...preIds.filter(id => !postIdsSet.has(id)),
-                ...postIds,
-            ];
+            return [...preIds.filter(id => !postIdsSet.has(id)), ...postIds];
         }
     }
     /**
@@ -474,13 +504,16 @@ let CollectionService = class CollectionService {
             this.rootCollection = translate_entity_1.translateDeep(existingRoot, ctx.languageCode);
             return this.rootCollection;
         }
-        const rootTranslation = await this.connection.getRepository(ctx, collection_translation_entity_1.CollectionTranslation).save(new collection_translation_entity_1.CollectionTranslation({
+        // We purposefully do not use the ctx in saving the new root Collection
+        // so that even if the outer transaction fails, the root collection will still
+        // get persisted.
+        const rootTranslation = await this.connection.getRepository(collection_translation_entity_1.CollectionTranslation).save(new collection_translation_entity_1.CollectionTranslation({
             languageCode: this.configService.defaultLanguageCode,
             name: shared_constants_1.ROOT_COLLECTION_NAME,
             description: 'The root of the Collection tree.',
             slug: shared_constants_1.ROOT_COLLECTION_NAME,
         }));
-        const newRoot = await this.connection.getRepository(ctx, collection_entity_1.Collection).save(new collection_entity_1.Collection({
+        const newRoot = await this.connection.getRepository(collection_entity_1.Collection).save(new collection_entity_1.Collection({
             isRoot: true,
             position: 0,
             translations: [rootTranslation],

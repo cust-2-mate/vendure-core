@@ -12,20 +12,28 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.HistoryService = void 0;
 const common_1 = require("@nestjs/common");
 const generated_types_1 = require("@vendure/common/lib/generated-types");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const customer_history_entry_entity_1 = require("../../entity/history-entry/customer-history-entry.entity");
 const history_entry_entity_1 = require("../../entity/history-entry/history-entry.entity");
 const order_history_entry_entity_1 = require("../../entity/history-entry/order-history-entry.entity");
+const event_bus_1 = require("../../event-bus");
+const history_entry_event_1 = require("../../event-bus/events/history-entry-event");
 const list_query_builder_1 = require("../helpers/list-query-builder/list-query-builder");
-const transactional_connection_1 = require("../transaction/transactional-connection");
 const administrator_service_1 = require("./administrator.service");
 /**
- * The HistoryService is reponsible for creating and retrieving HistoryEntry entities.
+ * @description
+ * Contains methods relating to {@link HistoryEntry} entities. Histories are timelines of actions
+ * related to a particular Customer or Order, recording significant events such as creation, state changes,
+ * notes, etc.
+ *
+ * @docsCategory services
  */
 let HistoryService = class HistoryService {
-    constructor(connection, administratorService, listQueryBuilder) {
+    constructor(connection, administratorService, listQueryBuilder, eventBus) {
         this.connection = connection;
         this.administratorService = administratorService;
         this.listQueryBuilder = listQueryBuilder;
+        this.eventBus = eventBus;
     }
     async getHistoryForOrder(ctx, orderId, publicOnly, options) {
         return this.listQueryBuilder
@@ -50,7 +58,9 @@ let HistoryService = class HistoryService {
             order: { id: orderId },
             administrator,
         });
-        return this.connection.getRepository(ctx, order_history_entry_entity_1.OrderHistoryEntry).save(entry);
+        const history = await this.connection.getRepository(ctx, order_history_entry_entity_1.OrderHistoryEntry).save(entry);
+        this.eventBus.publish(new history_entry_event_1.HistoryEntryEvent(ctx, history, 'created', 'order', { type, data }));
+        return history;
     }
     async getHistoryForCustomer(ctx, customerId, publicOnly, options) {
         return this.listQueryBuilder
@@ -76,7 +86,9 @@ let HistoryService = class HistoryService {
             customer: { id: customerId },
             administrator,
         });
-        return this.connection.getRepository(ctx, customer_history_entry_entity_1.CustomerHistoryEntry).save(entry);
+        const history = await this.connection.getRepository(ctx, customer_history_entry_entity_1.CustomerHistoryEntry).save(entry);
+        this.eventBus.publish(new history_entry_event_1.HistoryEntryEvent(ctx, history, 'created', 'customer', { type, data }));
+        return history;
     }
     async updateOrderHistoryEntry(ctx, args) {
         const entry = await this.connection.getEntityOrThrow(ctx, order_history_entry_entity_1.OrderHistoryEntry, args.entryId, {
@@ -92,11 +104,14 @@ let HistoryService = class HistoryService {
         if (administrator) {
             entry.administrator = administrator;
         }
-        return this.connection.getRepository(ctx, order_history_entry_entity_1.OrderHistoryEntry).save(entry);
+        const newEntry = await this.connection.getRepository(ctx, order_history_entry_entity_1.OrderHistoryEntry).save(entry);
+        this.eventBus.publish(new history_entry_event_1.HistoryEntryEvent(ctx, entry, 'updated', 'order', args));
+        return newEntry;
     }
     async deleteOrderHistoryEntry(ctx, id) {
         const entry = await this.connection.getEntityOrThrow(ctx, order_history_entry_entity_1.OrderHistoryEntry, id);
         await this.connection.getRepository(ctx, order_history_entry_entity_1.OrderHistoryEntry).remove(entry);
+        this.eventBus.publish(new history_entry_event_1.HistoryEntryEvent(ctx, entry, 'deleted', 'order', id));
     }
     async updateCustomerHistoryEntry(ctx, args) {
         const entry = await this.connection.getEntityOrThrow(ctx, customer_history_entry_entity_1.CustomerHistoryEntry, args.entryId, {
@@ -109,11 +124,14 @@ let HistoryService = class HistoryService {
         if (administrator) {
             entry.administrator = administrator;
         }
-        return this.connection.getRepository(ctx, customer_history_entry_entity_1.CustomerHistoryEntry).save(entry);
+        const newEntry = await this.connection.getRepository(ctx, customer_history_entry_entity_1.CustomerHistoryEntry).save(entry);
+        this.eventBus.publish(new history_entry_event_1.HistoryEntryEvent(ctx, entry, 'updated', 'customer', args));
+        return newEntry;
     }
     async deleteCustomerHistoryEntry(ctx, id) {
         const entry = await this.connection.getEntityOrThrow(ctx, customer_history_entry_entity_1.CustomerHistoryEntry, id);
         await this.connection.getRepository(ctx, customer_history_entry_entity_1.CustomerHistoryEntry).remove(entry);
+        this.eventBus.publish(new history_entry_event_1.HistoryEntryEvent(ctx, entry, 'deleted', 'customer', id));
     }
     async getAdministratorFromContext(ctx) {
         const administrator = ctx.activeUserId
@@ -126,7 +144,8 @@ HistoryService = __decorate([
     common_1.Injectable(),
     __metadata("design:paramtypes", [transactional_connection_1.TransactionalConnection,
         administrator_service_1.AdministratorService,
-        list_query_builder_1.ListQueryBuilder])
+        list_query_builder_1.ListQueryBuilder,
+        event_bus_1.EventBus])
 ], HistoryService);
 exports.HistoryService = HistoryService;
 //# sourceMappingURL=history.service.js.map

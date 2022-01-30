@@ -8,11 +8,13 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EventBusModule = void 0;
 const common_1 = require("@nestjs/common");
+const connection_module_1 = require("../connection/connection.module");
 const event_bus_1 = require("./event-bus");
 let EventBusModule = class EventBusModule {
 };
 EventBusModule = __decorate([
     common_1.Module({
+        imports: [connection_module_1.ConnectionModule],
         providers: [event_bus_1.EventBus],
         exports: [event_bus_1.EventBus],
     })

@@ -14,6 +14,13 @@ const typeorm_1 = require("typeorm");
 const base_entity_1 = require("../base/base.entity");
 const entity_id_decorator_1 = require("../entity-id.decorator");
 const product_variant_entity_1 = require("./product-variant.entity");
+/**
+ * @description
+ * A ProductVariantPrice is a Channel-specific price for a ProductVariant. For every Channel to
+ * which a ProductVariant is assigned, there will be a corresponding ProductVariantPrice entity.
+ *
+ * @docsCategory entities
+ */
 let ProductVariantPrice = class ProductVariantPrice extends base_entity_1.VendureEntity {
     constructor(input) {
         super(input);

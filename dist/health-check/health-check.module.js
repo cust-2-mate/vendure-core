@@ -27,8 +27,8 @@ let HealthCheckModule = class HealthCheckModule {
         this.worker = worker;
         // Register the default health checks for database and worker
         this.healthCheckRegistryService.registerIndicatorFunction([() => this.typeOrm.pingCheck('database')]);
-        const { jobQueueStrategy } = this.configService.jobQueueOptions;
-        if (inspectable_job_queue_strategy_1.isInspectableJobQueueStrategy(jobQueueStrategy)) {
+        const { enableWorkerHealthCheck, jobQueueStrategy } = this.configService.jobQueueOptions;
+        if (enableWorkerHealthCheck && inspectable_job_queue_strategy_1.isInspectableJobQueueStrategy(jobQueueStrategy)) {
             this.healthCheckRegistryService.registerIndicatorFunction([() => this.worker.isHealthy()]);
         }
     }

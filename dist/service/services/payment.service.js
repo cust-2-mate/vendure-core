@@ -16,6 +16,7 @@ const errors_1 = require("../../common/error/errors");
 const generated_graphql_admin_errors_1 = require("../../common/error/generated-graphql-admin-errors");
 const generated_graphql_shop_errors_1 = require("../../common/error/generated-graphql-shop-errors");
 const utils_1 = require("../../common/utils");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const order_entity_1 = require("../../entity/order/order.entity");
 const payment_entity_1 = require("../../entity/payment/payment.entity");
 const refund_entity_1 = require("../../entity/refund/refund.entity");
@@ -24,8 +25,13 @@ const payment_state_transition_event_1 = require("../../event-bus/events/payment
 const refund_state_transition_event_1 = require("../../event-bus/events/refund-state-transition-event");
 const payment_state_machine_1 = require("../helpers/payment-state-machine/payment-state-machine");
 const refund_state_machine_1 = require("../helpers/refund-state-machine/refund-state-machine");
-const transactional_connection_1 = require("../transaction/transactional-connection");
 const payment_method_service_1 = require("./payment-method.service");
+/**
+ * @description
+ * Contains methods relating to {@link Payment} entities.
+ *
+ * @docsCategory services
+ */
 let PaymentService = class PaymentService {
     constructor(connection, paymentStateMachine, refundStateMachine, paymentMethodService, eventBus) {
         this.connection = connection;
@@ -43,6 +49,14 @@ let PaymentService = class PaymentService {
             relations,
         });
     }
+    /**
+     * @description
+     * Transitions a Payment to the given state.
+     *
+     * When updating a Payment in the context of an Order, it is
+     * preferable to use the {@link OrderService} `transitionPaymentToState()` method, which will also handle
+     * updating the Order state too.
+     */
     async transitionToState(ctx, paymentId, state) {
         if (state === 'Settled') {
             return this.settlePayment(ctx, paymentId);
@@ -63,6 +77,14 @@ let PaymentService = class PaymentService {
     getNextStates(payment) {
         return this.paymentStateMachine.getNextStates(payment);
     }
+    /**
+     * @description
+     * Creates a new Payment.
+     *
+     * When creating a Payment in the context of an Order, it is
+     * preferable to use the {@link OrderService} `addPaymentToOrder()` method, which will also handle
+     * updating the Order state too.
+     */
     async createPayment(ctx, order, amount, method, metadata) {
         const { paymentMethod, handler, checker } = await this.paymentMethodService.getMethodAndOperations(ctx, method);
         if (paymentMethod.checker && checker) {
@@ -81,6 +103,14 @@ let PaymentService = class PaymentService {
         this.eventBus.publish(new payment_state_transition_event_1.PaymentStateTransitionEvent(initialState, result.state, ctx, payment, order));
         return payment;
     }
+    /**
+     * @description
+     * Settles a Payment.
+     *
+     * When settling a Payment in the context of an Order, it is
+     * preferable to use the {@link OrderService} `settlePayment()` method, which will also handle
+     * updating the Order state too.
+     */
     async settlePayment(ctx, paymentId) {
         const payment = await this.connection.getEntityOrThrow(ctx, payment_entity_1.Payment, paymentId, {
             relations: ['order'],
@@ -109,7 +139,12 @@ let PaymentService = class PaymentService {
         return payment;
     }
     /**
+     * @description
      * Creates a Payment from the manual payment mutation in the Admin API
+     *
+     * When creating a manual Payment in the context of an Order, it is
+     * preferable to use the {@link OrderService} `addManualPaymentToOrder()` method, which will also handle
+     * updating the Order state too.
      */
     async createManualPayment(ctx, order, amount, input) {
         const initialState = 'Created';
@@ -128,9 +163,14 @@ let PaymentService = class PaymentService {
         return payment;
     }
     /**
+     * @description
      * Creates a Refund against the specified Payment. If the amount to be refunded exceeds the value of the
      * specified Payment (in the case of multiple payments on a single Order), then the remaining outstanding
      * refund amount will be refunded against the next available Payment from the Order.
+     *
+     * When creating a Refund in the context of an Order, it is
+     * preferable to use the {@link OrderService} `refundOrder()` method, which performs additional
+     * validation.
      */
     async createRefund(ctx, input, order, items, selectedPayment) {
         var _a, _b, _c, _d;

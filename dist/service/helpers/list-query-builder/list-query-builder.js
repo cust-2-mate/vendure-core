@@ -11,31 +11,106 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ListQueryBuilder = void 0;
 const common_1 = require("@nestjs/common");
+const generated_types_1 = require("@vendure/common/lib/generated-types");
 const unique_1 = require("@vendure/common/lib/unique");
 const typeorm_1 = require("typeorm");
 const FindOptionsUtils_1 = require("typeorm/find-options/FindOptionsUtils");
 const errors_1 = require("../../../common/error/errors");
 const config_service_1 = require("../../../config/config.service");
 const vendure_logger_1 = require("../../../config/logger/vendure-logger");
-const transactional_connection_1 = require("../../transaction/transactional-connection");
+const transactional_connection_1 = require("../../../connection/transactional-connection");
 const connection_utils_1 = require("./connection-utils");
 const get_calculated_columns_1 = require("./get-calculated-columns");
 const parse_channel_param_1 = require("./parse-channel-param");
 const parse_filter_params_1 = require("./parse-filter-params");
 const parse_sort_params_1 = require("./parse-sort-params");
+/**
+ * @description
+ * This helper class is used when fetching entities the database from queries which return a {@link PaginatedList} type.
+ * These queries all follow the same format:
+ *
+ * In the GraphQL definition, they return a type which implements the `Node` interface, and the query returns a
+ * type which implements the `PaginatedList` interface:
+ *
+ * ```GraphQL
+ * type BlogPost implements Node {
+ *   id: ID!
+ *   published: DataTime!
+ *   title: String!
+ *   body: String!
+ * }
+ *
+ * type BlogPostList implements PaginatedList {
+ *   items: [BlogPost!]!
+ *   totalItems: Int!
+ * }
+ *
+ * # Generated at run-time by Vendure
+ * input BlogPostListOptions
+ *
+ * extend type Query {
+ *    blogPosts(options: BlogPostListOptions): BlogPostList!
+ * }
+ * ```
+ * When Vendure bootstraps, it will find the `BlogPostListOptions` input and, because it is used in a query
+ * returning a `PaginatedList` type, it knows that it should dynamically generate this input. This means
+ * all primitive field of the `BlogPost` type (namely, "published", "title" and "body") will have `filter` and
+ * `sort` inputs created for them, as well a `skip` and `take` fields for pagination.
+ *
+ * Your resolver function will then look like this:
+ *
+ * ```TypeScript
+ * \@Resolver()
+ * export class BlogPostResolver
+ *   constructor(private blogPostService: BlogPostService) {}
+ *
+ *   \@Query()
+ *   async blogPosts(
+ *     \@Ctx() ctx: RequestContext,
+ *     \@Args() args: any,
+ *   ): Promise<PaginatedList<BlogPost>> {
+ *     return this.blogPostService.findAll(ctx, args.options || undefined);
+ *   }
+ * }
+ * ```
+ *
+ * and the corresponding service will use the ListQueryBuilder:
+ *
+ * ```TypeScript
+ * \@Injectable()
+ * export class BlogPostService {
+ *   constructor(private listQueryBuilder: ListQueryBuilder) {}
+ *
+ *   findAll(ctx: RequestContext, options?: ListQueryOptions<BlogPost>) {
+ *     return this.listQueryBuilder
+ *       .build(BlogPost, options)
+ *       .getManyAndCount()
+ *       .then(async ([items, totalItems]) => {
+ *         return { items, totalItems };
+ *       });
+ *   }
+ * }
+ * ```
+ *
+ * @docsCategory data-access
+ * @docsPage ListQueryBuilder
+ * @docsWeight 0
+ */
 let ListQueryBuilder = class ListQueryBuilder {
     constructor(connection, configService) {
         this.connection = connection;
         this.configService = configService;
     }
+    /** @internal */
     onApplicationBootstrap() {
         this.registerSQLiteRegexpFunction();
     }
     /**
+     * @description
      * Creates and configures a SelectQueryBuilder for queries that return paginated lists of entities.
      */
     build(entity, options = {}, extendedOptions = {}) {
-        var _a, _b;
+        var _a, _b, _c;
         const apiType = (_b = (_a = extendedOptions.ctx) === null || _a === void 0 ? void 0 : _a.apiType) !== null && _b !== void 0 ? _b : 'shop';
         const rawConnection = this.connection.rawConnection;
         const { take, skip } = this.parseTakeSkipParams(apiType, options);
@@ -51,7 +126,7 @@ let ListQueryBuilder = class ListQueryBuilder {
         });
         // tslint:disable-next-line:no-non-null-assertion
         FindOptionsUtils_1.FindOptionsUtils.joinEagerRelations(qb, qb.alias, qb.expressionMap.mainAlias.metadata);
-        //this.applyTranslationConditions(qb, entity, extendedOptions.ctx);
+        this.applyTranslationConditions(qb, entity, extendedOptions.ctx);
         // join the tables required by calculated columns
         this.joinCalculatedColumnRelations(qb, entity, options);
         const { customPropertyMap } = extendedOptions;
@@ -60,9 +135,21 @@ let ListQueryBuilder = class ListQueryBuilder {
         }
         const sort = parse_sort_params_1.parseSortParams(rawConnection, entity, Object.assign({}, options.sort, extendedOptions.orderBy), customPropertyMap);
         const filter = parse_filter_params_1.parseFilterParams(rawConnection, entity, options.filter, customPropertyMap);
-        filter.forEach(({ clause, parameters }) => {
-            qb.andWhere(clause, parameters);
-        });
+        if (filter.length) {
+            const filterOperator = (_c = options.filterOperator) !== null && _c !== void 0 ? _c : generated_types_1.LogicalOperator.AND;
+            if (filterOperator === generated_types_1.LogicalOperator.AND) {
+                filter.forEach(({ clause, parameters }) => {
+                    qb.andWhere(clause, parameters);
+                });
+            }
+            else {
+                qb.andWhere(new typeorm_1.Brackets(qb1 => {
+                    filter.forEach(({ clause, parameters }) => {
+                        qb1.orWhere(clause, parameters);
+                    });
+                }));
+            }
+        }
         if (extendedOptions.channelId) {
             const channelFilter = parse_channel_param_1.parseChannelParam(rawConnection, entity, extendedOptions.channelId);
             if (channelFilter) {

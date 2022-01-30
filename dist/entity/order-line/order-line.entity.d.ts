@@ -22,25 +22,94 @@ export declare class OrderLine extends VendureEntity implements HasCustomFields 
     items: OrderItem[];
     order: Order;
     customFields: CustomOrderLineFields;
+    /**
+     * @description
+     * The price of a single unit, excluding tax and discounts.
+     */
     get unitPrice(): number;
+    /**
+     * @description
+     * The price of a single unit, including tax but excluding discounts.
+     */
     get unitPriceWithTax(): number;
+    /**
+     * @description
+     * Non-zero if the `unitPrice` has changed since it was initially added to Order.
+     */
     get unitPriceChangeSinceAdded(): number;
+    /**
+     * @description
+     * Non-zero if the `unitPriceWithTax` has changed since it was initially added to Order.
+     */
     get unitPriceWithTaxChangeSinceAdded(): number;
+    /**
+     * @description
+     * The price of a single unit including discounts, excluding tax.
+     *
+     * If Order-level discounts have been applied, this will not be the
+     * actual taxable unit price (see `proratedUnitPrice`), but is generally the
+     * correct price to display to customers to avoid confusion
+     * about the internal handling of distributed Order-level discounts.
+     */
     get discountedUnitPrice(): number;
+    /**
+     * @description
+     * The price of a single unit including discounts and tax
+     */
     get discountedUnitPriceWithTax(): number;
+    /**
+     * @description
+     * The actual unit price, taking into account both item discounts _and_ prorated (proportionally-distributed)
+     * Order-level discounts. This value is the true economic value of the OrderItem, and is used in tax
+     * and refund calculations.
+     */
     get proratedUnitPrice(): number;
+    /**
+     * @description
+     * The `proratedUnitPrice` including tax.
+     */
     get proratedUnitPriceWithTax(): number;
     get quantity(): number;
     get adjustments(): Adjustment[];
     get taxLines(): TaxLine[];
     get taxRate(): number;
+    /**
+     * @description
+     * The total price of the line excluding tax and discounts.
+     */
     get linePrice(): number;
+    /**
+     * @description
+     * The total price of the line including tax but excluding discounts.
+     */
     get linePriceWithTax(): number;
+    /**
+     * @description
+     * The price of the line including discounts, excluding tax.
+     */
     get discountedLinePrice(): number;
+    /**
+     * @description
+     * The price of the line including discounts and tax.
+     */
     get discountedLinePriceWithTax(): number;
     get discounts(): Discount[];
+    /**
+     * @description
+     * The total tax on this line.
+     */
     get lineTax(): number;
+    /**
+     * @description
+     * The actual line price, taking into account both item discounts _and_ prorated (proportionally-distributed)
+     * Order-level discounts. This value is the true economic value of the OrderLine, and is used in tax
+     * and refund calculations.
+     */
     get proratedLinePrice(): number;
+    /**
+     * @description
+     * The `proratedLinePrice` including tax.
+     */
     get proratedLinePriceWithTax(): number;
     get proratedLineTax(): number;
     /**

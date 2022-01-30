@@ -1,8 +1,8 @@
 import { RequestContext } from '../../../api/common/request-context';
 import { RequestContextCacheService } from '../../../cache/request-context-cache.service';
 import { Translatable, TranslatableKeys } from '../../../common/types/locale-types';
+import { TransactionalConnection } from '../../../connection/transactional-connection';
 import { VendureEntity } from '../../../entity/base/base.entity';
-import { TransactionalConnection } from '../../transaction/transactional-connection';
 /**
  * This helper class is to be used in GraphQL entity resolvers, to resolve fields which depend on being
  * translated (i.e. the corresponding entity field is of type `LocaleString`).

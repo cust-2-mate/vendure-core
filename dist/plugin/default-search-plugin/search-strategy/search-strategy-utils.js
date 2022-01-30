@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createCollectionIdCountMap = exports.createFacetIdCountMap = exports.mapToSearchResult = void 0;
+exports.createPlaceholderFromId = exports.createCollectionIdCountMap = exports.createFacetIdCountMap = exports.mapToSearchResult = void 0;
 const unique_1 = require("@vendure/common/lib/unique");
 /**
  * Maps a raw database result to a SearchResult.
@@ -46,6 +46,8 @@ function mapToSearchResult(raw, currencyCode) {
         productAsset,
         productVariantAsset,
         score: raw.score || 0,
+        // @ts-ignore
+        inStock: raw.si_inStock,
     };
 }
 exports.mapToSearchResult = mapToSearchResult;
@@ -94,4 +96,8 @@ function parseFocalPoint(focalPoint) {
     }
     return;
 }
+function createPlaceholderFromId(id) {
+    return '_' + id.toString().replace(/-/g, '_');
+}
+exports.createPlaceholderFromId = createPlaceholderFromId;
 //# sourceMappingURL=search-strategy-utils.js.map

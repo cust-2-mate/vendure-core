@@ -64,6 +64,9 @@ class Job {
         return this._settledAt;
     }
     get duration() {
+        if (this.state === generated_types_1.JobState.PENDING || this.state === generated_types_1.JobState.RETRYING) {
+            return 0;
+        }
         const end = this._settledAt || new Date();
         return +end - +(this._startedAt || end);
     }

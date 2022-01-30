@@ -13,6 +13,12 @@ exports.CustomerHistoryEntry = void 0;
 const typeorm_1 = require("typeorm");
 const customer_entity_1 = require("../customer/customer.entity");
 const history_entry_entity_1 = require("./history-entry.entity");
+/**
+ * @description
+ * Represents an event in the history of a particular {@link Customer}.
+ *
+ * @docsCategory entities
+ */
 let CustomerHistoryEntry = class CustomerHistoryEntry extends history_entry_entity_1.HistoryEntry {
     constructor(input) {
         super(input);

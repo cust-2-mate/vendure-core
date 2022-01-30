@@ -5,27 +5,31 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PasswordCipher = void 0;
 const common_1 = require("@nestjs/common");
-const bcrypt_1 = __importDefault(require("bcrypt"));
-const SALT_ROUNDS = 12;
+const config_service_1 = require("../../../config/config.service");
 /**
- * A cipher which uses bcrypt (https://en.wikipedia.org/wiki/Bcrypt) to hash plaintext password strings.
+ * @description
+ * Used in the {@link NativeAuthenticationStrategy} when hashing and checking user passwords.
  */
 let PasswordCipher = class PasswordCipher {
+    constructor(configService) {
+        this.configService = configService;
+    }
     hash(plaintext) {
-        return bcrypt_1.default.hash(plaintext, SALT_ROUNDS);
+        return this.configService.authOptions.passwordHashingStrategy.hash(plaintext);
     }
     check(plaintext, hash) {
-        return bcrypt_1.default.compare(plaintext, hash);
+        return this.configService.authOptions.passwordHashingStrategy.check(plaintext, hash);
     }
 };
 PasswordCipher = __decorate([
-    common_1.Injectable()
+    common_1.Injectable(),
+    __metadata("design:paramtypes", [config_service_1.ConfigService])
 ], PasswordCipher);
 exports.PasswordCipher = PasswordCipher;
 //# sourceMappingURL=password-cipher.js.map

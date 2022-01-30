@@ -13,6 +13,7 @@ exports.CountryTranslation = void 0;
 const generated_types_1 = require("@vendure/common/lib/generated-types");
 const typeorm_1 = require("typeorm");
 const base_entity_1 = require("../base/base.entity");
+const custom_entity_fields_1 = require("../custom-entity-fields");
 const country_entity_1 = require("./country.entity");
 let CountryTranslation = class CountryTranslation extends base_entity_1.VendureEntity {
     constructor(input) {
@@ -31,6 +32,10 @@ __decorate([
     typeorm_1.ManyToOne(type => country_entity_1.Country, base => base.translations, { onDelete: 'CASCADE' }),
     __metadata("design:type", country_entity_1.Country)
 ], CountryTranslation.prototype, "base", void 0);
+__decorate([
+    typeorm_1.Column(type => custom_entity_fields_1.CustomCountryFieldsTranslation),
+    __metadata("design:type", custom_entity_fields_1.CustomCountryFieldsTranslation)
+], CountryTranslation.prototype, "customFields", void 0);
 CountryTranslation = __decorate([
     typeorm_1.Entity(),
     __metadata("design:paramtypes", [Object])

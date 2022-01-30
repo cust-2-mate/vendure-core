@@ -2,14 +2,15 @@ import { UpdateCustomerInput as UpdateCustomerShopInput } from '@vendure/common/
 import { HistoryEntryListOptions, HistoryEntryType, UpdateAddressInput, UpdateCustomerInput } from '@vendure/common/lib/generated-types';
 import { ID, PaginatedList } from '@vendure/common/lib/shared-types';
 import { RequestContext } from '../../api/common/request-context';
+import { TransactionalConnection } from '../../connection/transactional-connection';
 import { CustomerHistoryEntry } from '../../entity/history-entry/customer-history-entry.entity';
 import { OrderHistoryEntry } from '../../entity/history-entry/order-history-entry.entity';
+import { EventBus } from '../../event-bus';
 import { FulfillmentState } from '../helpers/fulfillment-state-machine/fulfillment-state';
 import { ListQueryBuilder } from '../helpers/list-query-builder/list-query-builder';
 import { OrderState } from '../helpers/order-state-machine/order-state';
 import { PaymentState } from '../helpers/payment-state-machine/payment-state';
 import { RefundState } from '../helpers/refund-state-machine/refund-state';
-import { TransactionalConnection } from '../transaction/transactional-connection';
 import { AdministratorService } from './administrator.service';
 export declare type CustomerHistoryEntryData = {
     [HistoryEntryType.CUSTOMER_REGISTERED]: {
@@ -120,13 +121,19 @@ export interface UpdateCustomerHistoryEntryArgs<T extends keyof CustomerHistoryE
     data?: CustomerHistoryEntryData[T];
 }
 /**
- * The HistoryService is reponsible for creating and retrieving HistoryEntry entities.
+ * @description
+ * Contains methods relating to {@link HistoryEntry} entities. Histories are timelines of actions
+ * related to a particular Customer or Order, recording significant events such as creation, state changes,
+ * notes, etc.
+ *
+ * @docsCategory services
  */
 export declare class HistoryService {
     private connection;
     private administratorService;
     private listQueryBuilder;
-    constructor(connection: TransactionalConnection, administratorService: AdministratorService, listQueryBuilder: ListQueryBuilder);
+    private eventBus;
+    constructor(connection: TransactionalConnection, administratorService: AdministratorService, listQueryBuilder: ListQueryBuilder, eventBus: EventBus);
     getHistoryForOrder(ctx: RequestContext, orderId: ID, publicOnly: boolean, options?: HistoryEntryListOptions): Promise<PaginatedList<OrderHistoryEntry>>;
     createHistoryEntryForOrder<T extends keyof OrderHistoryEntryData>(args: CreateOrderHistoryEntryArgs<T>, isPublic?: boolean): Promise<OrderHistoryEntry>;
     getHistoryForCustomer(ctx: RequestContext, customerId: ID, publicOnly: boolean, options?: HistoryEntryListOptions): Promise<PaginatedList<CustomerHistoryEntry>>;

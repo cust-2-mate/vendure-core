@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CustomerGroup = void 0;
 const typeorm_1 = require("typeorm");
 const base_entity_1 = require("../base/base.entity");
+const custom_entity_fields_1 = require("../custom-entity-fields");
 const customer_entity_1 = require("../customer/customer.entity");
 /**
  * @description
@@ -30,9 +31,13 @@ __decorate([
     __metadata("design:type", String)
 ], CustomerGroup.prototype, "name", void 0);
 __decorate([
-    typeorm_1.ManyToMany((type) => customer_entity_1.Customer, (customer) => customer.groups),
+    typeorm_1.ManyToMany(type => customer_entity_1.Customer, customer => customer.groups),
     __metadata("design:type", Array)
 ], CustomerGroup.prototype, "customers", void 0);
+__decorate([
+    typeorm_1.Column(type => custom_entity_fields_1.CustomCustomerGroupFields),
+    __metadata("design:type", custom_entity_fields_1.CustomCustomerGroupFields)
+], CustomerGroup.prototype, "customFields", void 0);
 CustomerGroup = __decorate([
     typeorm_1.Entity(),
     __metadata("design:paramtypes", [Object])

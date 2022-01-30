@@ -55,6 +55,9 @@ let ShippingLine = class ShippingLine extends base_entity_1.VendureEntity {
     addAdjustment(adjustment) {
         this.adjustments = this.adjustments.concat(adjustment);
     }
+    clearAdjustments() {
+        this.adjustments = [];
+    }
     /**
      * @description
      * The total of all price adjustments. Will typically be a negative number due to discounts.

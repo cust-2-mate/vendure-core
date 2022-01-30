@@ -13,18 +13,28 @@ exports.GlobalSettingsService = void 0;
 const common_1 = require("@nestjs/common");
 const errors_1 = require("../../common/error/errors");
 const config_service_1 = require("../../config/config.service");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const global_settings_entity_1 = require("../../entity/global-settings/global-settings.entity");
+const event_bus_1 = require("../../event-bus");
+const global_settings_event_1 = require("../../event-bus/events/global-settings-event");
 const custom_field_relation_service_1 = require("../helpers/custom-field-relation/custom-field-relation.service");
 const patch_entity_1 = require("../helpers/utils/patch-entity");
-const transactional_connection_1 = require("../transaction/transactional-connection");
+/**
+ * @description
+ * Contains methods relating to the {@link GlobalSettings} entity.
+ *
+ * @docsCategory services
+ */
 let GlobalSettingsService = class GlobalSettingsService {
-    constructor(connection, configService, customFieldRelationService) {
+    constructor(connection, configService, customFieldRelationService, eventBus) {
         this.connection = connection;
         this.configService = configService;
         this.customFieldRelationService = customFieldRelationService;
+        this.eventBus = eventBus;
     }
     /**
      * Ensure there is a single global settings row in the database.
+     * @internal
      */
     async initGlobalSettings() {
         try {
@@ -45,6 +55,10 @@ let GlobalSettingsService = class GlobalSettingsService {
             await this.connection.getRepository(global_settings_entity_1.GlobalSettings).save(settings, { reload: false });
         }
     }
+    /**
+     * @description
+     * Returns the GlobalSettings entity.
+     */
     async getSettings(ctx) {
         const settings = await this.connection.getRepository(ctx, global_settings_entity_1.GlobalSettings).findOne({
             order: {
@@ -58,6 +72,7 @@ let GlobalSettingsService = class GlobalSettingsService {
     }
     async updateSettings(ctx, input) {
         const settings = await this.getSettings(ctx);
+        this.eventBus.publish(new global_settings_event_1.GlobalSettingsEvent(ctx, settings, input));
         patch_entity_1.patchEntity(settings, input);
         await this.customFieldRelationService.updateRelations(ctx, global_settings_entity_1.GlobalSettings, input, settings);
         return this.connection.getRepository(ctx, global_settings_entity_1.GlobalSettings).save(settings);
@@ -67,7 +82,8 @@ GlobalSettingsService = __decorate([
     common_1.Injectable(),
     __metadata("design:paramtypes", [transactional_connection_1.TransactionalConnection,
         config_service_1.ConfigService,
-        custom_field_relation_service_1.CustomFieldRelationService])
+        custom_field_relation_service_1.CustomFieldRelationService,
+        event_bus_1.EventBus])
 ], GlobalSettingsService);
 exports.GlobalSettingsService = GlobalSettingsService;
 //# sourceMappingURL=global-settings.service.js.map

@@ -10,7 +10,7 @@ export declare const buyXGetYFreeCondition: PromotionCondition<{
         type: "ID";
         list: true;
         ui: {
-            component: "product-selector-form-input";
+            component: string;
         };
         label: {
             languageCode: LanguageCode.en;
@@ -25,7 +25,7 @@ export declare const buyXGetYFreeCondition: PromotionCondition<{
         type: "ID";
         list: true;
         ui: {
-            component: "product-selector-form-input";
+            component: string;
         };
         label: {
             languageCode: LanguageCode.en;

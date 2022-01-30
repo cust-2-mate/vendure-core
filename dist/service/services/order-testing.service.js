@@ -13,6 +13,7 @@ exports.OrderTestingService = void 0;
 const common_1 = require("@nestjs/common");
 const tax_utils_1 = require("../../common/tax-utils");
 const config_service_1 = require("../../config/config.service");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const order_item_entity_1 = require("../../entity/order-item/order-item.entity");
 const order_line_entity_1 = require("../../entity/order-line/order-line.entity");
 const order_entity_1 = require("../../entity/order/order.entity");
@@ -21,24 +22,27 @@ const shipping_line_entity_1 = require("../../entity/shipping-line/shipping-line
 const shipping_method_entity_1 = require("../../entity/shipping-method/shipping-method.entity");
 const config_arg_service_1 = require("../helpers/config-arg/config-arg.service");
 const order_calculator_1 = require("../helpers/order-calculator/order-calculator");
+const product_price_applicator_1 = require("../helpers/product-price-applicator/product-price-applicator");
 const shipping_calculator_1 = require("../helpers/shipping-calculator/shipping-calculator");
 const translate_entity_1 = require("../helpers/utils/translate-entity");
-const transactional_connection_1 = require("../transaction/transactional-connection");
-const product_variant_service_1 = require("./product-variant.service");
 /**
+ * @description
  * This service is responsible for creating temporary mock Orders against which tests can be run, such as
  * testing a ShippingMethod or Promotion.
+ *
+ * @docsCategory services
  */
 let OrderTestingService = class OrderTestingService {
-    constructor(connection, orderCalculator, shippingCalculator, configArgService, configService, productVariantService) {
+    constructor(connection, orderCalculator, shippingCalculator, configArgService, configService, productPriceApplicator) {
         this.connection = connection;
         this.orderCalculator = orderCalculator;
         this.shippingCalculator = shippingCalculator;
         this.configArgService = configArgService;
         this.configService = configService;
-        this.productVariantService = productVariantService;
+        this.productPriceApplicator = productPriceApplicator;
     }
     /**
+     * @description
      * Runs a given ShippingMethod configuration against a mock Order to test for eligibility and resulting
      * price.
      */
@@ -65,7 +69,8 @@ let OrderTestingService = class OrderTestingService {
         };
     }
     /**
-     * Tests all available ShippingMethods against a mock Order and return those whic hare eligible. This
+     * @description
+     * Tests all available ShippingMethods against a mock Order and return those which are eligible. This
      * is intended to simulate a call to the `eligibleShippingMethods` query of the Shop API.
      */
     async testEligibleShippingMethods(ctx, input) {
@@ -99,7 +104,7 @@ let OrderTestingService = class OrderTestingService {
         mockOrder.shippingAddress = shippingAddress;
         for (const line of lines) {
             const productVariant = await this.connection.getEntityOrThrow(ctx, product_variant_entity_1.ProductVariant, line.productVariantId, { relations: ['taxCategory'] });
-            await this.productVariantService.applyChannelPriceAndTax(productVariant, ctx, mockOrder);
+            await this.productPriceApplicator.applyChannelPriceAndTax(productVariant, ctx, mockOrder);
             const orderLine = new order_line_entity_1.OrderLine({
                 productVariant,
                 items: [],
@@ -138,7 +143,7 @@ OrderTestingService = __decorate([
         shipping_calculator_1.ShippingCalculator,
         config_arg_service_1.ConfigArgService,
         config_service_1.ConfigService,
-        product_variant_service_1.ProductVariantService])
+        product_price_applicator_1.ProductPriceApplicator])
 ], OrderTestingService);
 exports.OrderTestingService = OrderTestingService;
 //# sourceMappingURL=order-testing.service.js.map

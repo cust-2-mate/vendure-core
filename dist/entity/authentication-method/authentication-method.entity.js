@@ -13,6 +13,14 @@ exports.AuthenticationMethod = void 0;
 const typeorm_1 = require("typeorm");
 const base_entity_1 = require("../base/base.entity");
 const user_entity_1 = require("../user/user.entity");
+/**
+ * @description
+ * An AuthenticationMethod represents the means by which a {@link User} is authenticated. There are two kinds:
+ * {@link NativeAuthenticationMethod} and {@link ExternalAuthenticationMethod}.
+ *
+ * @docsCategory entities
+ * @docsPage AuthenticationMethod
+ */
 let AuthenticationMethod = class AuthenticationMethod extends base_entity_1.VendureEntity {
 };
 __decorate([

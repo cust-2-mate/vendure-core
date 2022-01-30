@@ -1,5 +1,4 @@
-import { ConfigurableOperationInput } from '@vendure/common/lib/generated-types';
-import { ConfigurableOperation } from '../../../../../common/lib/generated-types';
+import { ConfigurableOperation, ConfigurableOperationInput } from '@vendure/common/lib/generated-types';
 import { CollectionFilter } from '../../../config/catalog/collection-filter';
 import { ConfigService } from '../../../config/config.service';
 import { FulfillmentHandler } from '../../../config/fulfillment/fulfillment-handler';

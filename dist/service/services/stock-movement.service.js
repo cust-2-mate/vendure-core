@@ -13,6 +13,7 @@ exports.StockMovementService = void 0;
 const common_1 = require("@nestjs/common");
 const generated_types_1 = require("@vendure/common/lib/generated-types");
 const errors_1 = require("../../common/error/errors");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const order_item_entity_1 = require("../../entity/order-item/order-item.entity");
 const product_variant_entity_1 = require("../../entity/product-variant/product-variant.entity");
 const allocation_entity_1 = require("../../entity/stock-movement/allocation.entity");
@@ -24,8 +25,13 @@ const stock_movement_entity_1 = require("../../entity/stock-movement/stock-movem
 const event_bus_1 = require("../../event-bus/event-bus");
 const stock_movement_event_1 = require("../../event-bus/events/stock-movement-event");
 const list_query_builder_1 = require("../helpers/list-query-builder/list-query-builder");
-const transactional_connection_1 = require("../transaction/transactional-connection");
 const global_settings_service_1 = require("./global-settings.service");
+/**
+ * @description
+ * Contains methods relating to {@link StockMovement} entities.
+ *
+ * @docsCategory services
+ */
 let StockMovementService = class StockMovementService {
     constructor(connection, listQueryBuilder, globalSettingsService, eventBus) {
         this.connection = connection;
@@ -33,6 +39,10 @@ let StockMovementService = class StockMovementService {
         this.globalSettingsService = globalSettingsService;
         this.eventBus = eventBus;
     }
+    /**
+     * @description
+     * Returns a {@link PaginatedList} of all StockMovements associated with the specified ProductVariant.
+     */
     getStockMovementsByProductVariantId(ctx, productVariantId, options) {
         return this.listQueryBuilder
             .build(stock_movement_entity_1.StockMovement, options, { ctx })
@@ -46,6 +56,11 @@ let StockMovementService = class StockMovementService {
             };
         });
     }
+    /**
+     * @description
+     * Adjusts the stock level of the ProductVariant, creating a new {@link StockAdjustment} entity
+     * in the process.
+     */
     async adjustProductVariantStock(ctx, productVariantId, oldStockLevel, newStockLevel) {
         if (oldStockLevel === newStockLevel) {
             return;
@@ -58,22 +73,38 @@ let StockMovementService = class StockMovementService {
         this.eventBus.publish(new stock_movement_event_1.StockMovementEvent(ctx, [adjustment]));
         return adjustment;
     }
+    /**
+     * @description
+     * Creates a new {@link Allocation} for each OrderLine in the Order. For ProductVariants
+     * which are configured to track stock levels, the `ProductVariant.stockAllocated` value is
+     * increased, indicating that this quantity of stock is allocated and cannot be sold.
+     */
     async createAllocationsForOrder(ctx, order) {
         if (order.active !== false) {
             throw new errors_1.InternalServerError('error.cannot-create-allocations-for-active-order');
         }
+        const lines = order.lines.map(orderLine => ({ orderLine, quantity: orderLine.quantity }));
+        return this.createAllocationsForOrderLines(ctx, lines);
+    }
+    /**
+     * @description
+     * Creates a new {@link Allocation} for each of the given OrderLines. For ProductVariants
+     * which are configured to track stock levels, the `ProductVariant.stockAllocated` value is
+     * increased, indicating that this quantity of stock is allocated and cannot be sold.
+     */
+    async createAllocationsForOrderLines(ctx, lines) {
         const allocations = [];
         const globalTrackInventory = (await this.globalSettingsService.getSettings(ctx)).trackInventory;
-        for (const line of order.lines) {
-            const productVariant = await this.connection.getEntityOrThrow(ctx, product_variant_entity_1.ProductVariant, line.productVariant.id);
+        for (const { orderLine, quantity } of lines) {
+            const productVariant = await this.connection.getEntityOrThrow(ctx, product_variant_entity_1.ProductVariant, orderLine.productVariant.id);
             const allocation = new allocation_entity_1.Allocation({
                 productVariant,
-                quantity: line.quantity,
-                orderLine: line,
+                quantity,
+                orderLine,
             });
             allocations.push(allocation);
             if (this.trackInventoryForVariant(productVariant, globalTrackInventory)) {
-                productVariant.stockAllocated += line.quantity;
+                productVariant.stockAllocated += quantity;
                 await this.connection
                     .getRepository(ctx, product_variant_entity_1.ProductVariant)
                     .save(productVariant, { reload: false });
@@ -85,6 +116,13 @@ let StockMovementService = class StockMovementService {
         }
         return savedAllocations;
     }
+    /**
+     * @description
+     * Creates {@link Sale}s for each OrderLine in the Order. For ProductVariants
+     * which are configured to track stock levels, the `ProductVariant.stockAllocated` value is
+     * reduced and the `stockOnHand` value is also reduced the the OrderLine quantity, indicating
+     * that the stock is no longer allocated, but is actually sold and no longer available.
+     */
     async createSalesForOrder(ctx, orderItems) {
         const sales = [];
         const globalTrackInventory = (await this.globalSettingsService.getSettings(ctx)).trackInventory;
@@ -122,6 +160,12 @@ let StockMovementService = class StockMovementService {
         }
         return savedSales;
     }
+    /**
+     * @description
+     * Creates a {@link Cancellation} for each of the specified OrderItems. For ProductVariants
+     * which are configured to track stock levels, the `ProductVariant.stockOnHand` value is
+     * increased for each Cancellation, allowing that stock to be sold again.
+     */
     async createCancellationsForOrderItems(ctx, items) {
         const orderItems = await this.connection.getRepository(ctx, order_item_entity_1.OrderItem).findByIds(items.map(i => i.id), {
             relations: ['line', 'line.productVariant'],
@@ -159,6 +203,12 @@ let StockMovementService = class StockMovementService {
         }
         return savedCancellations;
     }
+    /**
+     * @description
+     * Creates a {@link Release} for each of the specified OrderItems. For ProductVariants
+     * which are configured to track stock levels, the `ProductVariant.stockAllocated` value is
+     * reduced, indicating that this stock is once again available to buy.
+     */
     async createReleasesForOrderItems(ctx, items) {
         const orderItems = await this.connection.getRepository(ctx, order_item_entity_1.OrderItem).findByIds(items.map(i => i.id), {
             relations: ['line', 'line.productVariant'],

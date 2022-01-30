@@ -13,6 +13,7 @@ exports.JobQueueService = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("../config");
 const constants_1 = require("./constants");
+const job_buffer_service_1 = require("./job-buffer/job-buffer.service");
 const job_queue_1 = require("./job-queue");
 /**
  * @description
@@ -50,8 +51,9 @@ const job_queue_1 = require("./job-queue");
  * @docsCategory JobQueue
  */
 let JobQueueService = class JobQueueService {
-    constructor(configService) {
+    constructor(configService, jobBufferService) {
         this.configService = configService;
+        this.jobBufferService = jobBufferService;
         this.queues = [];
         this.hasStarted = false;
     }
@@ -68,7 +70,7 @@ let JobQueueService = class JobQueueService {
      * Configures and creates a new {@link JobQueue} instance.
      */
     async createQueue(options) {
-        const queue = new job_queue_1.JobQueue(options, this.jobQueueStrategy);
+        const queue = new job_queue_1.JobQueue(options, this.jobQueueStrategy, this.jobBufferService);
         if (this.hasStarted && this.shouldStartQueue(queue.name)) {
             await queue.start();
         }
@@ -83,6 +85,64 @@ let JobQueueService = class JobQueueService {
                 await queue.start();
             }
         }
+    }
+    /**
+     * @description
+     * Adds a {@link JobBuffer}, which will make it active and begin collecting
+     * jobs to buffer.
+     *
+     * @since 1.3.0
+     */
+    addBuffer(buffer) {
+        this.jobBufferService.addBuffer(buffer);
+    }
+    /**
+     * @description
+     * Removes a {@link JobBuffer}, prevent it from collecting and buffering any
+     * subsequent jobs.
+     *
+     * @since 1.3.0
+     */
+    removeBuffer(buffer) {
+        this.jobBufferService.removeBuffer(buffer);
+    }
+    /**
+     * @description
+     * Returns an object containing the number of buffered jobs arranged by bufferId. This
+     * can be used to decide whether a particular buffer has any jobs to flush.
+     *
+     * Passing in JobBuffer instances _or_ ids limits the results to the specified JobBuffers.
+     * If no argument is passed, sizes will be returned for _all_ JobBuffers.
+     *
+     * @example
+     * ```TypeScript
+     * const sizes = await this.jobQueueService.bufferSize('buffer-1', 'buffer-2');
+     *
+     * // sizes = { 'buffer-1': 12, 'buffer-2': 3 }
+     * ```
+     *
+     * @since 1.3.0
+     */
+    bufferSize(...forBuffers) {
+        return this.jobBufferService.bufferSize(forBuffers);
+    }
+    /**
+     * @description
+     * Flushes the specified buffers, which means that the buffer is cleared and the jobs get
+     * sent to the job queue for processing. Before sending the jobs to the job queue,
+     * they will be passed through each JobBuffer's `reduce()` method, which is can be used
+     * to optimize the amount of work to be done by e.g. de-duplicating identical jobs or
+     * aggregating data over the collected jobs.
+     *
+     * Passing in JobBuffer instances _or_ ids limits the action to the specified JobBuffers.
+     * If no argument is passed, _all_ JobBuffers will be flushed.
+     *
+     * Returns an array of all Jobs which were added to the job queue.
+     *
+     * @since 1.3.0
+     */
+    flush(...forBuffers) {
+        return this.jobBufferService.flush(forBuffers);
     }
     /**
      * @description
@@ -106,7 +166,7 @@ let JobQueueService = class JobQueueService {
 };
 JobQueueService = __decorate([
     common_1.Injectable(),
-    __metadata("design:paramtypes", [config_1.ConfigService])
+    __metadata("design:paramtypes", [config_1.ConfigService, job_buffer_service_1.JobBufferService])
 ], JobQueueService);
 exports.JobQueueService = JobQueueService;
 //# sourceMappingURL=job-queue.service.js.map

@@ -129,17 +129,19 @@ class ActiveQueue {
  */
 class PollingJobQueueStrategy extends injectable_job_queue_strategy_1.InjectableJobQueueStrategy {
     constructor(concurrencyOrConfig, maybePollInterval) {
-        var _a, _b, _c;
+        var _a, _b, _c, _d;
         super();
         this.activeQueues = new queue_name_process_storage_1.QueueNameProcessStorage();
         if (concurrencyOrConfig && shared_utils_1.isObject(concurrencyOrConfig)) {
             this.concurrency = (_a = concurrencyOrConfig.concurrency) !== null && _a !== void 0 ? _a : 1;
             this.pollInterval = (_b = concurrencyOrConfig.pollInterval) !== null && _b !== void 0 ? _b : 200;
             this.backOffStrategy = (_c = concurrencyOrConfig.backoffStrategy) !== null && _c !== void 0 ? _c : (() => 1000);
+            this.setRetries = (_d = concurrencyOrConfig.setRetries) !== null && _d !== void 0 ? _d : ((_, job) => job.retries);
         }
         else {
             this.concurrency = concurrencyOrConfig !== null && concurrencyOrConfig !== void 0 ? concurrencyOrConfig : 1;
             this.pollInterval = maybePollInterval !== null && maybePollInterval !== void 0 ? maybePollInterval : 200;
+            this.setRetries = (_, job) => job.retries;
         }
     }
     async start(queueName, process) {

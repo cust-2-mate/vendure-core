@@ -19,23 +19,26 @@ const merge_transition_definitions_1 = require("../../../common/finite-state-mac
 const validate_transition_definition_1 = require("../../../common/finite-state-machine/validate-transition-definition");
 const utils_1 = require("../../../common/utils");
 const config_service_1 = require("../../../config/config.service");
+const transactional_connection_1 = require("../../../connection/transactional-connection");
 const order_modification_entity_1 = require("../../../entity/order-modification/order-modification.entity");
 const order_entity_1 = require("../../../entity/order/order.entity");
 const payment_entity_1 = require("../../../entity/payment/payment.entity");
 const product_variant_entity_1 = require("../../../entity/product-variant/product-variant.entity");
+const order_placed_event_1 = require("../../../event-bus/events/order-placed-event");
+const index_1 = require("../../../event-bus/index");
 const history_service_1 = require("../../services/history.service");
 const promotion_service_1 = require("../../services/promotion.service");
 const stock_movement_service_1 = require("../../services/stock-movement.service");
-const transactional_connection_1 = require("../../transaction/transactional-connection");
 const order_utils_1 = require("../utils/order-utils");
 const order_state_1 = require("./order-state");
 let OrderStateMachine = class OrderStateMachine {
-    constructor(connection, configService, stockMovementService, historyService, promotionService) {
+    constructor(connection, configService, stockMovementService, historyService, promotionService, eventBus) {
         this.connection = connection;
         this.configService = configService;
         this.stockMovementService = stockMovementService;
         this.historyService = historyService;
         this.promotionService = promotionService;
+        this.eventBus = eventBus;
         this.initialState = 'Created';
         this.config = this.initConfig();
     }
@@ -79,6 +82,9 @@ let OrderStateMachine = class OrderStateMachine {
             }
         }
         if (fromState === 'ArrangingAdditionalPayment') {
+            if (toState === 'Cancelled') {
+                return;
+            }
             const existingPayments = await this.connection.getRepository(data.ctx, payment_entity_1.Payment).find({
                 relations: ['refunds'],
                 where: {
@@ -111,6 +117,9 @@ let OrderStateMachine = class OrderStateMachine {
             }
             if (!data.order.customer) {
                 return `message.cannot-transition-to-payment-without-customer`;
+            }
+            if (!data.order.shippingLines || data.order.shippingLines.length === 0) {
+                return `message.cannot-transition-to-payment-without-shipping-method`;
             }
         }
         if (toState === 'PaymentAuthorized') {
@@ -164,6 +173,7 @@ let OrderStateMachine = class OrderStateMachine {
                 order.active = false;
                 order.orderPlacedAt = new Date();
                 await this.promotionService.addPromotionsToOrder(ctx, order);
+                this.eventBus.publish(new order_placed_event_1.OrderPlacedEvent(fromState, toState, ctx, order));
             }
         }
         const shouldAllocateStock = await stockAllocationStrategy.shouldAllocateStock(ctx, fromState, toState, order);
@@ -229,7 +239,8 @@ OrderStateMachine = __decorate([
         config_service_1.ConfigService,
         stock_movement_service_1.StockMovementService,
         history_service_1.HistoryService,
-        promotion_service_1.PromotionService])
+        promotion_service_1.PromotionService,
+        index_1.EventBus])
 ], OrderStateMachine);
 exports.OrderStateMachine = OrderStateMachine;
 //# sourceMappingURL=order-state-machine.js.map

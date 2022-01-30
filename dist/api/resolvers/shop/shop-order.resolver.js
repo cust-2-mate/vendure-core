@@ -185,7 +185,7 @@ let ShopOrderResolver = class ShopOrderResolver {
                         // to populate the initial default Address.
                         if (addresses.length === 0 && ((_a = order.shippingAddress) === null || _a === void 0 ? void 0 : _a.country)) {
                             const address = order.shippingAddress;
-                            await this.customerService.createAddress(ctx, order.customer.id, Object.assign(Object.assign({}, address), { streetLine1: address.streetLine1 || '', streetLine2: address.streetLine2 || '', countryCode: address.countryCode || '', defaultBillingAddress: true, defaultShippingAddress: true }));
+                            await this.customerService.createAddress(ctx, order.customer.id, Object.assign(Object.assign({}, address), { company: address.company || '', streetLine1: address.streetLine1 || '', streetLine2: address.streetLine2 || '', countryCode: address.countryCode || '', defaultBillingAddress: true, defaultShippingAddress: true }));
                         }
                     }
                 }

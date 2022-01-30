@@ -52,7 +52,7 @@ __decorate([
     __param(0, request_context_decorator_1.Ctx()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [request_context_1.RequestContext]),
-    __metadata("design:returntype", Array)
+    __metadata("design:returntype", Promise)
 ], ZoneResolver.prototype, "zones", null);
 __decorate([
     graphql_1.Query(),

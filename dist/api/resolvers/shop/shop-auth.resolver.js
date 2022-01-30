@@ -135,6 +135,9 @@ let ShopAuthResolver = class ShopAuthResolver extends base_auth_resolver_1.BaseA
                 },
             },
         }, req, res);
+        if (error_result_1.isGraphQlErrorResult(authResult) && authResult.__typename === 'NotVerifiedError') {
+            return authResult;
+        }
         if (error_result_1.isGraphQlErrorResult(authResult)) {
             // This should never occur in theory
             throw authResult;

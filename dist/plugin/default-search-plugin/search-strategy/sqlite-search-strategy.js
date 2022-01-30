@@ -4,15 +4,16 @@ exports.SqliteSearchStrategy = void 0;
 const generated_types_1 = require("@vendure/common/lib/generated-types");
 const typeorm_1 = require("typeorm");
 const errors_1 = require("../../../common/error/errors");
-const search_index_item_entity_1 = require("../search-index-item.entity");
+const search_index_item_entity_1 = require("../entities/search-index-item.entity");
 const search_strategy_utils_1 = require("./search-strategy-utils");
 /**
  * A rather naive search for SQLite / SQL.js. Rather than proper
  * full-text searching, it uses a weighted `LIKE "%term%"` operator instead.
  */
 class SqliteSearchStrategy {
-    constructor(connection) {
+    constructor(connection, options) {
         this.connection = connection;
+        this.options = options;
         this.minTermLength = 2;
     }
     async getFacetValueIds(ctx, input, enabledOnly) {
@@ -93,7 +94,7 @@ class SqliteSearchStrategy {
         return totalItemsQb.getRawOne().then(res => res.total);
     }
     applyTermAndFilters(ctx, qb, input) {
-        const { term, facetValueFilters, facetValueIds, facetValueOperator, collectionId, collectionSlug, } = input;
+        const { term, facetValueFilters, facetValueIds, facetValueOperator, collectionId, collectionSlug } = input;
         qb.where('1 = 1');
         if (term && term.length > this.minTermLength) {
             // Note: SQLite does not natively have fulltext search capabilities,
@@ -111,10 +112,18 @@ class SqliteSearchStrategy {
             }))
                 .setParameters({ term, like_term: `%${term}%` });
         }
+        if (input.inStock != null) {
+            if (input.groupByProduct) {
+                qb.andWhere('productInStock = :inStock', { inStock: input.inStock });
+            }
+            else {
+                qb.andWhere('inStock = :inStock', { inStock: input.inStock });
+            }
+        }
         if (facetValueIds === null || facetValueIds === void 0 ? void 0 : facetValueIds.length) {
             qb.andWhere(new typeorm_1.Brackets(qb1 => {
                 for (const id of facetValueIds) {
-                    const placeholder = '_' + id;
+                    const placeholder = search_strategy_utils_1.createPlaceholderFromId(id);
                     const clause = `(',' || facetValueIds || ',') LIKE :${placeholder}`;
                     const params = { [placeholder]: `%,${id},%` };
                     if (facetValueOperator === generated_types_1.LogicalOperator.AND) {
@@ -135,14 +144,14 @@ class SqliteSearchStrategy {
                             throw new errors_1.UserInputError('error.facetfilterinput-invalid-input');
                         }
                         if (facetValueFilter.and) {
-                            const placeholder = '_' + facetValueFilter.and;
+                            const placeholder = search_strategy_utils_1.createPlaceholderFromId(facetValueFilter.and);
                             const clause = `(',' || facetValueIds || ',') LIKE :${placeholder}`;
                             const params = { [placeholder]: `%,${facetValueFilter.and},%` };
                             qb2.where(clause, params);
                         }
                         if ((_b = facetValueFilter.or) === null || _b === void 0 ? void 0 : _b.length) {
                             for (const id of facetValueFilter.or) {
-                                const placeholder = '_' + id;
+                                const placeholder = search_strategy_utils_1.createPlaceholderFromId(id);
                                 const clause = `(',' || facetValueIds || ',') LIKE :${placeholder}`;
                                 const params = { [placeholder]: `%,${id},%` };
                                 qb2.orWhere(clause, params);

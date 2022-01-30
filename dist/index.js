@@ -19,8 +19,10 @@ Object.defineProperty(exports, "generateMigration", { enumerable: true, get: fun
 Object.defineProperty(exports, "revertLastMigration", { enumerable: true, get: function () { return migrate_1.revertLastMigration; } });
 Object.defineProperty(exports, "runMigrations", { enumerable: true, get: function () { return migrate_1.runMigrations; } });
 __exportStar(require("./api/index"), exports);
+__exportStar(require("./cache/index"), exports);
 __exportStar(require("./common/index"), exports);
 __exportStar(require("./config/index"), exports);
+__exportStar(require("./connection/index"), exports);
 __exportStar(require("./event-bus/index"), exports);
 __exportStar(require("./health-check/index"), exports);
 __exportStar(require("./job-queue/index"), exports);

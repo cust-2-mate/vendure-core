@@ -83,7 +83,7 @@ class PromotionOrderAction extends PromotionAction {
     }
     /** @internal */
     execute(ctx, order, args, state) {
-        const actionState = this.conditions ? pick_1.pick(state, Object.keys(this.conditions)) : {};
+        const actionState = this.conditions ? pick_1.pick(state, this.conditions.map(c => c.code)) : {};
         return this.executeFn(ctx, order, this.argsArrayToHash(args), actionState);
     }
 }
@@ -103,7 +103,7 @@ class PromotionShippingAction extends PromotionAction {
     }
     /** @internal */
     execute(ctx, shippingLine, order, args, state) {
-        const actionState = this.conditions ? pick_1.pick(state, Object.keys(this.conditions)) : {};
+        const actionState = this.conditions ? pick_1.pick(state, this.conditions.map(c => c.code)) : {};
         return this.executeFn(ctx, shippingLine, order, this.argsArrayToHash(args), actionState);
     }
 }

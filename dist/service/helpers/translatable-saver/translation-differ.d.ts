@@ -1,7 +1,7 @@
 import { DeepPartial } from '@vendure/common/lib/shared-types';
 import { RequestContext } from '../../../api/common/request-context';
 import { Translatable, Translation, TranslationInput } from '../../../common/types/locale-types';
-import { TransactionalConnection } from '../../transaction/transactional-connection';
+import { TransactionalConnection } from '../../../connection/transactional-connection';
 export declare type TranslationContructor<T> = new (input?: DeepPartial<TranslationInput<T>> | DeepPartial<Translation<T>>) => Translation<T>;
 export interface TranslationDiff<T> {
     toUpdate: Array<Translation<T>>;

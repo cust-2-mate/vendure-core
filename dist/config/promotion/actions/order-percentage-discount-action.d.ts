@@ -3,7 +3,7 @@ export declare const orderPercentageDiscount: PromotionOrderAction<{
     discount: {
         type: "int";
         ui: {
-            component: "number-form-input";
+            component: string;
             suffix: string;
         };
     };

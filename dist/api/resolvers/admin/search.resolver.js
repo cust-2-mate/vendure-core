@@ -27,6 +27,12 @@ let SearchResolver = class SearchResolver {
     async reindex(...args) {
         throw new errors_1.InternalServerError(`error.no-search-plugin-configured`);
     }
+    async pendingSearchIndexUpdates(...args) {
+        throw new errors_1.InternalServerError(`error.no-search-plugin-configured`);
+    }
+    async runPendingSearchIndexUpdates(...args) {
+        throw new errors_1.InternalServerError(`error.no-search-plugin-configured`);
+    }
 };
 __decorate([
     graphql_1.Query(),
@@ -54,6 +60,20 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], SearchResolver.prototype, "reindex", null);
+__decorate([
+    graphql_1.Query(),
+    allow_decorator_1.Allow(generated_types_1.Permission.ReadCatalog, generated_types_1.Permission.ReadProduct),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], SearchResolver.prototype, "pendingSearchIndexUpdates", null);
+__decorate([
+    graphql_1.Mutation(),
+    allow_decorator_1.Allow(generated_types_1.Permission.UpdateCatalog, generated_types_1.Permission.UpdateProduct),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], SearchResolver.prototype, "runPendingSearchIndexUpdates", null);
 SearchResolver = __decorate([
     graphql_1.Resolver()
 ], SearchResolver);

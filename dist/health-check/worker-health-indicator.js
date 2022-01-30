@@ -24,8 +24,8 @@ let WorkerHealthIndicator = class WorkerHealthIndicator extends terminus_1.Healt
         this.configService = configService;
     }
     async onModuleInit() {
-        const { jobQueueStrategy } = this.configService.jobQueueOptions;
-        if (inspectable_job_queue_strategy_1.isInspectableJobQueueStrategy(jobQueueStrategy)) {
+        const { jobQueueStrategy, enableWorkerHealthCheck } = this.configService.jobQueueOptions;
+        if (enableWorkerHealthCheck && inspectable_job_queue_strategy_1.isInspectableJobQueueStrategy(jobQueueStrategy)) {
             this.queue = await this.jobQueueService.createQueue({
                 name: exports.WORKER_HEALTH_QUEUE_NAME,
                 process: async (job) => {

@@ -10,7 +10,7 @@ export declare const defaultShippingCalculator: ShippingCalculator<{
         type: "int";
         defaultValue: number;
         ui: {
-            component: "currency-form-input";
+            component: string;
         };
         label: {
             languageCode: LanguageCode.en;
@@ -21,10 +21,10 @@ export declare const defaultShippingCalculator: ShippingCalculator<{
         type: "string";
         defaultValue: TaxSetting;
         ui: {
-            component: "select-form-input";
+            component: string;
             options: {
                 label: {
-                    languageCode: LanguageCode.en;
+                    languageCode: LanguageCode;
                     value: string;
                 }[];
                 value: TaxSetting;
@@ -39,7 +39,7 @@ export declare const defaultShippingCalculator: ShippingCalculator<{
         type: "int";
         defaultValue: number;
         ui: {
-            component: "number-form-input";
+            component: string;
             suffix: string;
         };
         label: {

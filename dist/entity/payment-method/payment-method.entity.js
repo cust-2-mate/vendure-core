@@ -13,6 +13,7 @@ exports.PaymentMethod = void 0;
 const typeorm_1 = require("typeorm");
 const base_entity_1 = require("../base/base.entity");
 const channel_entity_1 = require("../channel/channel.entity");
+const custom_entity_fields_1 = require("../custom-entity-fields");
 /**
  * @description
  * A PaymentMethod is created automatically according to the configured {@link PaymentMethodHandler}s defined
@@ -54,6 +55,10 @@ __decorate([
     typeorm_1.JoinTable(),
     __metadata("design:type", Array)
 ], PaymentMethod.prototype, "channels", void 0);
+__decorate([
+    typeorm_1.Column(type => custom_entity_fields_1.CustomPaymentMethodFields),
+    __metadata("design:type", custom_entity_fields_1.CustomPaymentMethodFields)
+], PaymentMethod.prototype, "customFields", void 0);
 PaymentMethod = __decorate([
     typeorm_1.Entity(),
     __metadata("design:paramtypes", [Object])

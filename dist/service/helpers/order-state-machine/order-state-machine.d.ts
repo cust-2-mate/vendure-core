@@ -1,11 +1,12 @@
 import { RequestContext } from '../../../api/common/request-context';
 import { StateMachineConfig } from '../../../common/finite-state-machine/types';
 import { ConfigService } from '../../../config/config.service';
+import { TransactionalConnection } from '../../../connection/transactional-connection';
 import { Order } from '../../../entity/order/order.entity';
+import { EventBus } from '../../../event-bus/index';
 import { HistoryService } from '../../services/history.service';
 import { PromotionService } from '../../services/promotion.service';
 import { StockMovementService } from '../../services/stock-movement.service';
-import { TransactionalConnection } from '../../transaction/transactional-connection';
 import { OrderState, OrderTransitionData } from './order-state';
 export declare class OrderStateMachine {
     private connection;
@@ -13,9 +14,10 @@ export declare class OrderStateMachine {
     private stockMovementService;
     private historyService;
     private promotionService;
+    private eventBus;
     readonly config: StateMachineConfig<OrderState, OrderTransitionData>;
     private readonly initialState;
-    constructor(connection: TransactionalConnection, configService: ConfigService, stockMovementService: StockMovementService, historyService: HistoryService, promotionService: PromotionService);
+    constructor(connection: TransactionalConnection, configService: ConfigService, stockMovementService: StockMovementService, historyService: HistoryService, promotionService: PromotionService, eventBus: EventBus);
     getInitialState(): OrderState;
     canTransition(currentState: OrderState, newState: OrderState): boolean;
     getNextStates(order: Order): ReadonlyArray<OrderState>;

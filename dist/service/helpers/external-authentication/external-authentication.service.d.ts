@@ -1,4 +1,5 @@
 import { RequestContext } from '../../../api/common/request-context';
+import { TransactionalConnection } from '../../../connection/transactional-connection';
 import { Role } from '../../../entity/role/role.entity';
 import { User } from '../../../entity/user/user.entity';
 import { AdministratorService } from '../../services/administrator.service';
@@ -6,7 +7,6 @@ import { ChannelService } from '../../services/channel.service';
 import { CustomerService } from '../../services/customer.service';
 import { HistoryService } from '../../services/history.service';
 import { RoleService } from '../../services/role.service';
-import { TransactionalConnection } from '../../transaction/transactional-connection';
 /**
  * @description
  * This is a helper service which exposes methods related to looking up and creating Users based on an

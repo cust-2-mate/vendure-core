@@ -17,9 +17,10 @@ const subscribable_job_1 = require("./subscribable-job");
  * @docsCategory JobQueue
  */
 class JobQueue {
-    constructor(options, jobQueueStrategy) {
+    constructor(options, jobQueueStrategy, jobBufferService) {
         this.options = options;
         this.jobQueueStrategy = jobQueueStrategy;
+        this.jobBufferService = jobBufferService;
         this.running = false;
     }
     get name() {
@@ -84,13 +85,20 @@ class JobQueue {
             queueName: this.options.name,
             retries: (_a = options === null || options === void 0 ? void 0 : options.retries) !== null && _a !== void 0 ? _a : 0,
         });
-        try {
-            const addedJob = await this.jobQueueStrategy.add(job);
-            return new subscribable_job_1.SubscribableJob(addedJob, this.jobQueueStrategy);
+        const isBuffered = await this.jobBufferService.add(job);
+        if (!isBuffered) {
+            try {
+                const addedJob = await this.jobQueueStrategy.add(job);
+                return new subscribable_job_1.SubscribableJob(addedJob, this.jobQueueStrategy);
+            }
+            catch (err) {
+                vendure_logger_1.Logger.error(`Could not add Job to "${this.name}" queue`, undefined, err.stack);
+                return new subscribable_job_1.SubscribableJob(job, this.jobQueueStrategy);
+            }
         }
-        catch (err) {
-            vendure_logger_1.Logger.error(`Could not add Job to "${this.name}" queue`, undefined, err.stack);
-            return new subscribable_job_1.SubscribableJob(job, this.jobQueueStrategy);
+        else {
+            const bufferedJob = new job_1.Job(Object.assign(Object.assign({}, job), { data: job.data, id: 'buffered' }));
+            return new subscribable_job_1.SubscribableJob(bufferedJob, this.jobQueueStrategy);
         }
     }
 }

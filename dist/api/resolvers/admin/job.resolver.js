@@ -17,11 +17,13 @@ const graphql_1 = require("@nestjs/graphql");
 const generated_types_1 = require("@vendure/common/lib/generated-types");
 const config_1 = require("../../../config");
 const job_queue_1 = require("../../../job-queue");
+const job_buffer_service_1 = require("../../../job-queue/job-buffer/job-buffer.service");
 const allow_decorator_1 = require("../../decorators/allow.decorator");
 let JobResolver = class JobResolver {
-    constructor(configService, jobService) {
+    constructor(configService, jobService, jobBufferService) {
         this.configService = configService;
         this.jobService = jobService;
+        this.jobBufferService = jobBufferService;
     }
     async job(args) {
         const strategy = this.requireInspectableJobQueueStrategy();
@@ -63,6 +65,14 @@ let JobResolver = class JobResolver {
             return;
         }
         return strategy.cancelJob(args.jobId);
+    }
+    async jobBufferSize(args) {
+        const bufferSizes = await this.jobBufferService.bufferSize(args.bufferIds);
+        return Object.entries(bufferSizes).map(([bufferId, size]) => ({ bufferId, size }));
+    }
+    async flushBufferedJobs(args) {
+        await this.jobBufferService.flush(args.bufferIds);
+        return { success: true };
     }
     requireInspectableJobQueueStrategy() {
         if (!config_1.isInspectableJobQueueStrategy(this.configService.jobQueueOptions.jobQueueStrategy)) {
@@ -118,9 +128,27 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], JobResolver.prototype, "cancelJob", null);
+__decorate([
+    graphql_1.Query(),
+    allow_decorator_1.Allow(generated_types_1.Permission.ReadSettings, generated_types_1.Permission.ReadSystem),
+    __param(0, graphql_1.Args()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], JobResolver.prototype, "jobBufferSize", null);
+__decorate([
+    graphql_1.Mutation(),
+    allow_decorator_1.Allow(generated_types_1.Permission.UpdateSettings, generated_types_1.Permission.UpdateSystem),
+    __param(0, graphql_1.Args()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], JobResolver.prototype, "flushBufferedJobs", null);
 JobResolver = __decorate([
     graphql_1.Resolver(),
-    __metadata("design:paramtypes", [config_1.ConfigService, job_queue_1.JobQueueService])
+    __metadata("design:paramtypes", [config_1.ConfigService,
+        job_queue_1.JobQueueService,
+        job_buffer_service_1.JobBufferService])
 ], JobResolver);
 exports.JobResolver = JobResolver;
 //# sourceMappingURL=job.resolver.js.map

@@ -54,6 +54,7 @@ __exportStar(require("./session/session.entity"), exports);
 __exportStar(require("./session/anonymous-session.entity"), exports);
 __exportStar(require("./session/authenticated-session.entity"), exports);
 __exportStar(require("./surcharge/surcharge.entity"), exports);
+__exportStar(require("./shipping-line/shipping-line.entity"), exports);
 __exportStar(require("./shipping-method/shipping-method.entity"), exports);
 __exportStar(require("./tag/tag.entity"), exports);
 __exportStar(require("./tax-category/tax-category.entity"), exports);

@@ -17,7 +17,7 @@ export declare const defaultPromotionActions: (import("./promotion-action").Prom
         type: "ID";
         list: true;
         ui: {
-            component: "product-selector-form-input";
+            component: string;
         };
         label: {
             languageCode: import("@vendure/common/lib/generated-types").LanguageCode.en;
@@ -32,7 +32,7 @@ export declare const defaultPromotionActions: (import("./promotion-action").Prom
         type: "ID";
         list: true;
         ui: {
-            component: "product-selector-form-input";
+            component: string;
         };
         label: {
             languageCode: import("@vendure/common/lib/generated-types").LanguageCode.en;
@@ -45,7 +45,7 @@ export declare const defaultPromotionActions: (import("./promotion-action").Prom
     discount: {
         type: "int";
         ui: {
-            component: "number-form-input";
+            component: string;
             suffix: string;
         };
     };
@@ -53,29 +53,21 @@ export declare const defaultPromotionActions: (import("./promotion-action").Prom
         type: "ID";
         list: true;
         ui: {
-            component: "facet-value-form-input";
+            component: string;
         };
     };
 }, []> | import("./promotion-action").PromotionShippingAction<{}, []> | import("./promotion-action").PromotionOrderAction<{
     discount: {
         type: "int";
         ui: {
-            component: "currency-form-input";
-        };
-    };
-}, []> | import("./promotion-action").PromotionOrderAction<{
-    discount: {
-        type: "int";
-        ui: {
-            component: "number-form-input";
-            suffix: string;
+            component: string;
         };
     };
 }, []> | import("./promotion-action").PromotionItemAction<{
     discount: {
         type: "int";
         ui: {
-            component: "number-form-input";
+            component: string;
             suffix: string;
         };
     };
@@ -83,7 +75,7 @@ export declare const defaultPromotionActions: (import("./promotion-action").Prom
         type: "ID";
         list: true;
         ui: {
-            component: "product-selector-form-input";
+            component: string;
         };
         label: {
             languageCode: import("@vendure/common/lib/generated-types").LanguageCode.en;
@@ -100,7 +92,7 @@ export declare const defaultPromotionConditions: (import("./promotion-condition"
         type: "ID";
         list: true;
         ui: {
-            component: "product-selector-form-input";
+            component: string;
         };
         label: {
             languageCode: import("@vendure/common/lib/generated-types").LanguageCode.en;
@@ -115,7 +107,7 @@ export declare const defaultPromotionConditions: (import("./promotion-condition"
         type: "ID";
         list: true;
         ui: {
-            component: "product-selector-form-input";
+            component: string;
         };
         label: {
             languageCode: import("@vendure/common/lib/generated-types").LanguageCode.en;
@@ -133,7 +125,7 @@ export declare const defaultPromotionConditions: (import("./promotion-condition"
         type: "ID";
         list: true;
         ui: {
-            component: "product-selector-form-input";
+            component: string;
         };
         label: {
             languageCode: import("@vendure/common/lib/generated-types").LanguageCode.en;
@@ -144,7 +136,7 @@ export declare const defaultPromotionConditions: (import("./promotion-condition"
     customerGroupId: {
         type: "ID";
         ui: {
-            component: "customer-group-form-input";
+            component: string;
         };
         label: {
             languageCode: import("@vendure/common/lib/generated-types").LanguageCode.en;
@@ -160,7 +152,7 @@ export declare const defaultPromotionConditions: (import("./promotion-condition"
         type: "ID";
         list: true;
         ui: {
-            component: "facet-value-form-input";
+            component: string;
         };
     };
 }, "at_least_n_with_facets", boolean> | import("./promotion-condition").PromotionCondition<{
@@ -168,7 +160,7 @@ export declare const defaultPromotionConditions: (import("./promotion-condition"
         type: "int";
         defaultValue: number;
         ui: {
-            component: "currency-form-input";
+            component: string;
         };
     };
     taxInclusive: {

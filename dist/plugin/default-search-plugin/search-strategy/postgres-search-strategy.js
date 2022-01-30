@@ -4,15 +4,16 @@ exports.PostgresSearchStrategy = void 0;
 const generated_types_1 = require("@vendure/common/lib/generated-types");
 const typeorm_1 = require("typeorm");
 const errors_1 = require("../../../common/error/errors");
-const search_index_item_entity_1 = require("../search-index-item.entity");
+const search_index_item_entity_1 = require("../entities/search-index-item.entity");
 const search_strategy_common_1 = require("./search-strategy-common");
 const search_strategy_utils_1 = require("./search-strategy-utils");
 /**
  * A weighted fulltext search for PostgeSQL.
  */
 class PostgresSearchStrategy {
-    constructor(connection) {
+    constructor(connection, options) {
         this.connection = connection;
+        this.options = options;
         this.minTermLength = 2;
     }
     async getFacetValueIds(ctx, input, enabledOnly) {
@@ -103,9 +104,15 @@ class PostgresSearchStrategy {
         return totalItemsQb.getRawOne().then(res => res.total);
     }
     applyTermAndFilters(ctx, qb, input, forceGroup = false) {
-        const { term, facetValueFilters, facetValueIds, facetValueOperator, collectionId, collectionSlug, } = input;
+        const { term, facetValueFilters, facetValueIds, facetValueOperator, collectionId, collectionSlug } = input;
         // join multiple words with the logical AND operator
-        const termLogicalAnd = term ? term.trim().replace(/\s+/g, ' & ') : '';
+        const termLogicalAnd = term
+            ? term
+                .trim()
+                .split(/\s+/g)
+                .map(t => `${t}:*`)
+                .join(' & ')
+            : '';
         qb.where('1 = 1');
         if (term && term.length > this.minTermLength) {
             const minIfGrouped = (colName) => input.groupByProduct || forceGroup ? `MIN(${colName})` : colName;
@@ -123,10 +130,18 @@ class PostgresSearchStrategy {
             }))
                 .setParameters({ term: termLogicalAnd });
         }
+        if (input.inStock != null) {
+            if (input.groupByProduct) {
+                qb.andWhere('si.productInStock = :inStock', { inStock: input.inStock });
+            }
+            else {
+                qb.andWhere('si.inStock = :inStock', { inStock: input.inStock });
+            }
+        }
         if (facetValueIds === null || facetValueIds === void 0 ? void 0 : facetValueIds.length) {
             qb.andWhere(new typeorm_1.Brackets(qb1 => {
                 for (const id of facetValueIds) {
-                    const placeholder = '_' + id;
+                    const placeholder = search_strategy_utils_1.createPlaceholderFromId(id);
                     const clause = `:${placeholder} = ANY (string_to_array(si.facetValueIds, ','))`;
                     const params = { [placeholder]: id };
                     if (facetValueOperator === generated_types_1.LogicalOperator.AND) {
@@ -147,14 +162,14 @@ class PostgresSearchStrategy {
                             throw new errors_1.UserInputError('error.facetfilterinput-invalid-input');
                         }
                         if (facetValueFilter.and) {
-                            const placeholder = '_' + facetValueFilter.and;
+                            const placeholder = search_strategy_utils_1.createPlaceholderFromId(facetValueFilter.and);
                             const clause = `:${placeholder} = ANY (string_to_array(si.facetValueIds, ','))`;
                             const params = { [placeholder]: facetValueFilter.and };
                             qb2.where(clause, params);
                         }
                         if ((_b = facetValueFilter.or) === null || _b === void 0 ? void 0 : _b.length) {
                             for (const id of facetValueFilter.or) {
-                                const placeholder = '_' + id;
+                                const placeholder = search_strategy_utils_1.createPlaceholderFromId(id);
                                 const clause = `:${placeholder} = ANY (string_to_array(si.facetValueIds, ','))`;
                                 const params = { [placeholder]: id };
                                 qb2.orWhere(clause, params);
@@ -185,7 +200,7 @@ class PostgresSearchStrategy {
      * "MIN" function in this case to all other columns than the productId.
      */
     createPostgresSelect(groupByProduct) {
-        return search_strategy_common_1.fieldsToSelect
+        return search_strategy_common_1.getFieldsToSelect(this.options.indexStockStatus)
             .map(col => {
             const qualifiedName = `si.${col}`;
             const alias = `si_${col}`;
@@ -196,7 +211,7 @@ class PostgresSearchStrategy {
                     col === 'channelIds') {
                     return `string_agg(${qualifiedName}, ',') as "${alias}"`;
                 }
-                else if (col === 'enabled') {
+                else if (col === 'enabled' || col === 'inStock' || col === 'productInStock') {
                     return `bool_or(${qualifiedName}) as "${alias}"`;
                 }
                 else {

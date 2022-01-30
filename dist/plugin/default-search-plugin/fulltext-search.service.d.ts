@@ -1,15 +1,16 @@
 import { SearchInput, SearchResponse } from '@vendure/common/lib/generated-types';
 import { Omit } from '@vendure/common/lib/omit';
 import { RequestContext } from '../../api/common/request-context';
+import { TransactionalConnection } from '../../connection/transactional-connection';
 import { Collection, FacetValue } from '../../entity';
 import { EventBus } from '../../event-bus/event-bus';
 import { Job } from '../../job-queue/job';
-import { FacetValueService } from '../../service/services/facet-value.service';
 import { CollectionService } from '../../service/services/collection.service';
+import { FacetValueService } from '../../service/services/facet-value.service';
 import { ProductVariantService } from '../../service/services/product-variant.service';
 import { SearchService } from '../../service/services/search.service';
-import { TransactionalConnection } from '../../service/transaction/transactional-connection';
 import { SearchIndexService } from './indexer/search-index.service';
+import { DefaultSearchPluginInitOptions } from './types';
 /**
  * Search indexing and full-text search for supported databases. See the various
  * SearchStrategy implementations for db-specific code.
@@ -22,9 +23,10 @@ export declare class FulltextSearchService {
     private productVariantService;
     private searchIndexService;
     private searchService;
+    private options;
     private searchStrategy;
     private readonly minTermLength;
-    constructor(connection: TransactionalConnection, eventBus: EventBus, facetValueService: FacetValueService, collectionService: CollectionService, productVariantService: ProductVariantService, searchIndexService: SearchIndexService, searchService: SearchService);
+    constructor(connection: TransactionalConnection, eventBus: EventBus, facetValueService: FacetValueService, collectionService: CollectionService, productVariantService: ProductVariantService, searchIndexService: SearchIndexService, searchService: SearchService, options: DefaultSearchPluginInitOptions);
     /**
      * Perform a fulltext search according to the provided input arguments.
      */

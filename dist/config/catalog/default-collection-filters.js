@@ -25,8 +25,10 @@ exports.facetValueCollectionFilter = new collection_filter_1.CollectionFilter({
     apply: (qb, args) => {
         const ids = args.facetValueIds;
         if (ids.length) {
-            const idsName = `ids_${ids.join('_')}`;
-            const countName = `count_${ids.join('_')}`;
+            // uuid IDs can include `-` chars, which we cannot use in a TypeORM key name.
+            const safeIdsConcat = ids.join('_').replace(/-/g, '_');
+            const idsName = `ids_${safeIdsConcat}`;
+            const countName = `count_${safeIdsConcat}`;
             const productFacetValues = qb.connection
                 .createQueryBuilder(product_variant_entity_1.ProductVariant, 'product_variant')
                 .select('product_variant.id', 'variant_id')

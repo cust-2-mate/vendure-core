@@ -21,7 +21,7 @@ export declare class NativeAuthenticationStrategy implements AuthenticationStrat
     readonly name = "native";
     private connection;
     private passwordCipher;
-    init(injector: Injector): void;
+    init(injector: Injector): Promise<void>;
     defineInputType(): DocumentNode;
     authenticate(ctx: RequestContext, data: NativeAuthenticationData): Promise<User | false>;
     private getUserFromIdentifier;

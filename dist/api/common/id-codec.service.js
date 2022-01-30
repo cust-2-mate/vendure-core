@@ -15,7 +15,8 @@ const config_service_1 = require("../../config/config.service");
 const id_codec_1 = require("./id-codec");
 let IdCodecService = class IdCodecService {
     constructor(configService) {
-        this.idCodec = new id_codec_1.IdCodec(configService.entityIdStrategy);
+        var _a;
+        this.idCodec = new id_codec_1.IdCodec((_a = configService.entityOptions.entityIdStrategy) !== null && _a !== void 0 ? _a : configService.entityIdStrategy);
     }
     encode(target, transformKeys) {
         return this.idCodec.encode(target, transformKeys);

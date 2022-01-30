@@ -8,6 +8,7 @@ const vendure_event_1 = require("../vendure-event");
  *
  * @docsCategory events
  * @docsPage Event Types
+ * @deprecated Use TaxRateEvent instead
  */
 class TaxRateModificationEvent extends vendure_event_1.VendureEvent {
     constructor(ctx, taxRate) {

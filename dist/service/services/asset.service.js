@@ -18,6 +18,7 @@ const generated_types_1 = require("@vendure/common/lib/generated-types");
 const omit_1 = require("@vendure/common/lib/omit");
 const shared_utils_1 = require("@vendure/common/lib/shared-utils");
 const unique_1 = require("@vendure/common/lib/unique");
+const fs_1 = require("fs");
 const fs_extra_1 = require("fs-extra");
 const mime_types_1 = __importDefault(require("mime-types"));
 const path_1 = __importDefault(require("path"));
@@ -29,6 +30,7 @@ const generated_graphql_admin_errors_1 = require("../../common/error/generated-g
 const utils_1 = require("../../common/utils");
 const config_service_1 = require("../../config/config.service");
 const vendure_logger_1 = require("../../config/logger/vendure-logger");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const asset_entity_1 = require("../../entity/asset/asset.entity");
 const collection_entity_1 = require("../../entity/collection/collection.entity");
 const product_variant_entity_1 = require("../../entity/product-variant/product-variant.entity");
@@ -39,12 +41,18 @@ const asset_event_1 = require("../../event-bus/events/asset-event");
 const custom_field_relation_service_1 = require("../helpers/custom-field-relation/custom-field-relation.service");
 const list_query_builder_1 = require("../helpers/list-query-builder/list-query-builder");
 const patch_entity_1 = require("../helpers/utils/patch-entity");
-const transactional_connection_1 = require("../transaction/transactional-connection");
 const channel_service_1 = require("./channel.service");
 const role_service_1 = require("./role.service");
 const tag_service_1 = require("./tag.service");
 // tslint:disable-next-line:no-var-requires
 const sizeOf = require('image-size');
+/**
+ * @description
+ * Contains methods relating to {@link Asset} entities.
+ *
+ * @docsCategory services
+ * @docsWeight 0
+ */
 let AssetService = class AssetService {
     constructor(connection, configService, listQueryBuilder, eventBus, tagService, channelService, roleService, customFieldRelationService) {
         this.connection = connection;
@@ -113,6 +121,11 @@ let AssetService = class AssetService {
         }
         return (entityWithFeaturedAsset && entityWithFeaturedAsset.featuredAsset) || undefined;
     }
+    /**
+     * @description
+     * Returns the Assets of an entity which has a well-ordered list of Assets, such as Product,
+     * ProductVariant or Collection.
+     */
     async getEntityAssets(ctx, entity) {
         var _a, _b;
         let orderableAssets = entity.assets;
@@ -166,6 +179,7 @@ let AssetService = class AssetService {
         return entity;
     }
     /**
+     * @description
      * Updates the assets / featuredAsset of an entity, ensuring that only valid assetIds are used.
      */
     async updateEntityAssets(ctx, entity, input) {
@@ -187,7 +201,12 @@ let AssetService = class AssetService {
         return entity;
     }
     /**
-     * Create an Asset based on a file uploaded via the GraphQL API.
+     * @description
+     * Create an Asset based on a file uploaded via the GraphQL API. The file should be uploaded
+     * using the [GraphQL multipart request specification](https://github.com/jaydenseric/graphql-multipart-request-spec),
+     * e.g. using the [apollo-upload-client](https://github.com/jaydenseric/apollo-upload-client) npm package.
+     *
+     * See the [Uploading Files docs](/docs/developer-guide/uploading-files) for an example of usage.
      */
     async create(ctx, input) {
         return new Promise(async (resolve, reject) => {
@@ -196,7 +215,14 @@ let AssetService = class AssetService {
             stream.on('error', (err) => {
                 reject(err);
             });
-            const result = await this.createAssetInternal(ctx, stream, filename, mimetype, input.customFields);
+            let result;
+            try {
+                result = await this.createAssetInternal(ctx, stream, filename, mimetype, input.customFields);
+            }
+            catch (e) {
+                reject(e);
+                return;
+            }
             if (error_result_1.isGraphQlErrorResult(result)) {
                 resolve(result);
                 return;
@@ -207,10 +233,14 @@ let AssetService = class AssetService {
                 result.tags = tags;
                 await this.connection.getRepository(ctx, asset_entity_1.Asset).save(result);
             }
-            this.eventBus.publish(new asset_event_1.AssetEvent(ctx, result, 'created'));
+            this.eventBus.publish(new asset_event_1.AssetEvent(ctx, result, 'created', input));
             resolve(result);
         });
     }
+    /**
+     * @description
+     * Updates the name, focalPoint, tags & custom fields of an Asset.
+     */
     async update(ctx, input) {
         const asset = await this.connection.getEntityOrThrow(ctx, asset_entity_1.Asset, input.id);
         if (input.focalPoint) {
@@ -224,9 +254,14 @@ let AssetService = class AssetService {
             asset.tags = await this.tagService.valuesToTags(ctx, input.tags);
         }
         const updatedAsset = await this.connection.getRepository(ctx, asset_entity_1.Asset).save(asset);
-        this.eventBus.publish(new asset_event_1.AssetEvent(ctx, updatedAsset, 'updated'));
+        this.eventBus.publish(new asset_event_1.AssetEvent(ctx, updatedAsset, 'updated', input));
         return updatedAsset;
     }
+    /**
+     * @description
+     * Deletes an Asset after performing checks to ensure that the Asset is not currently in use
+     * by a Product, ProductVariant or Collection.
+     */
     async delete(ctx, ids, force = false, deleteFromAllChannels = false) {
         const assets = await this.connection.findByIdsInChannel(ctx, asset_entity_1.Asset, ids, ctx.channelId, {
             relations: ['channels'],
@@ -295,7 +330,7 @@ let AssetService = class AssetService {
         return this.connection.findByIdsInChannel(ctx, asset_entity_1.Asset, assets.map(a => a.id), ctx.channelId, {});
     }
     async createFromFileStream(stream, maybeFilePath) {
-        const filePath = stream instanceof fs_extra_1.ReadStream ? stream.path : maybeFilePath;
+        const filePath = stream instanceof fs_extra_1.ReadStream || stream instanceof fs_1.ReadStream ? stream.path : maybeFilePath;
         if (typeof filePath === 'string') {
             const filename = path_1.default.basename(filePath);
             const mimetype = mime_types_1.default.lookup(filename) || 'application/octet-stream';
@@ -306,6 +341,7 @@ let AssetService = class AssetService {
         }
     }
     /**
+     * @description
      * Unconditionally delete given assets.
      * Does not remove assets from channels
      */
@@ -322,7 +358,7 @@ let AssetService = class AssetService {
             catch (e) {
                 vendure_logger_1.Logger.error(`error.could-not-delete-asset-file`, undefined, e.stack);
             }
-            this.eventBus.publish(new asset_event_1.AssetEvent(ctx, deletedAsset, 'deleted'));
+            this.eventBus.publish(new asset_event_1.AssetEvent(ctx, deletedAsset, 'deleted', deletedAsset.id));
         }
         return {
             result: generated_types_1.DeletionResult.DELETED,
@@ -352,7 +388,7 @@ let AssetService = class AssetService {
             preview = await assetPreviewStrategy.generatePreviewImage(ctx, mimetype, sourceFile);
         }
         catch (e) {
-            vendure_logger_1.Logger.error(`Could not create Asset preview image: ${e.message}`);
+            vendure_logger_1.Logger.error(`Could not create Asset preview image: ${e.message}`, undefined, e.stack);
             throw e;
         }
         const previewFileIdentifier = await assetStorageStrategy.writeFileFromBuffer(previewFileName, preview);
@@ -370,7 +406,7 @@ let AssetService = class AssetService {
             focalPoint: null,
             customFields,
         });
-        this.channelService.assignToCurrentChannel(asset, ctx);
+        await this.channelService.assignToCurrentChannel(asset, ctx);
         return this.connection.getRepository(ctx, asset_entity_1.Asset).save(asset);
     }
     async getSourceFileName(ctx, fileName) {

@@ -31,12 +31,24 @@ let OrderLine = class OrderLine extends base_entity_1.VendureEntity {
     constructor(input) {
         super(input);
     }
+    /**
+     * @description
+     * The price of a single unit, excluding tax and discounts.
+     */
     get unitPrice() {
         return this.firstActiveItemPropOr('unitPrice', 0);
     }
+    /**
+     * @description
+     * The price of a single unit, including tax but excluding discounts.
+     */
     get unitPriceWithTax() {
         return this.firstActiveItemPropOr('unitPriceWithTax', 0);
     }
+    /**
+     * @description
+     * Non-zero if the `unitPrice` has changed since it was initially added to Order.
+     */
     get unitPriceChangeSinceAdded() {
         const firstItem = this.activeItems[0];
         if (!firstItem) {
@@ -48,6 +60,10 @@ let OrderLine = class OrderLine extends base_entity_1.VendureEntity {
             : initialListPrice;
         return this.unitPrice - initialPrice;
     }
+    /**
+     * @description
+     * Non-zero if the `unitPriceWithTax` has changed since it was initially added to Order.
+     */
     get unitPriceWithTaxChangeSinceAdded() {
         const firstItem = this.activeItems[0];
         if (!firstItem) {
@@ -59,15 +75,38 @@ let OrderLine = class OrderLine extends base_entity_1.VendureEntity {
             : tax_utils_1.grossPriceOf(initialListPrice, this.taxRate);
         return this.unitPriceWithTax - initialPriceWithTax;
     }
+    /**
+     * @description
+     * The price of a single unit including discounts, excluding tax.
+     *
+     * If Order-level discounts have been applied, this will not be the
+     * actual taxable unit price (see `proratedUnitPrice`), but is generally the
+     * correct price to display to customers to avoid confusion
+     * about the internal handling of distributed Order-level discounts.
+     */
     get discountedUnitPrice() {
         return this.firstActiveItemPropOr('discountedUnitPrice', 0);
     }
+    /**
+     * @description
+     * The price of a single unit including discounts and tax
+     */
     get discountedUnitPriceWithTax() {
         return this.firstActiveItemPropOr('discountedUnitPriceWithTax', 0);
     }
+    /**
+     * @description
+     * The actual unit price, taking into account both item discounts _and_ prorated (proportionally-distributed)
+     * Order-level discounts. This value is the true economic value of the OrderItem, and is used in tax
+     * and refund calculations.
+     */
     get proratedUnitPrice() {
         return this.firstActiveItemPropOr('proratedUnitPrice', 0);
     }
+    /**
+     * @description
+     * The `proratedUnitPrice` including tax.
+     */
     get proratedUnitPriceWithTax() {
         return this.firstActiveItemPropOr('proratedUnitPriceWithTax', 0);
     }
@@ -83,15 +122,31 @@ let OrderLine = class OrderLine extends base_entity_1.VendureEntity {
     get taxRate() {
         return this.firstActiveItemPropOr('taxRate', 0);
     }
+    /**
+     * @description
+     * The total price of the line excluding tax and discounts.
+     */
     get linePrice() {
         return shared_utils_1.summate(this.activeItems, 'unitPrice');
     }
+    /**
+     * @description
+     * The total price of the line including tax but excluding discounts.
+     */
     get linePriceWithTax() {
         return shared_utils_1.summate(this.activeItems, 'unitPriceWithTax');
     }
+    /**
+     * @description
+     * The price of the line including discounts, excluding tax.
+     */
     get discountedLinePrice() {
         return shared_utils_1.summate(this.activeItems, 'discountedUnitPrice');
     }
+    /**
+     * @description
+     * The price of the line including discounts and tax.
+     */
     get discountedLinePriceWithTax() {
         return shared_utils_1.summate(this.activeItems, 'discountedUnitPriceWithTax');
     }
@@ -118,12 +173,26 @@ let OrderLine = class OrderLine extends base_entity_1.VendureEntity {
         }
         return [...groupedDiscounts.values()];
     }
+    /**
+     * @description
+     * The total tax on this line.
+     */
     get lineTax() {
         return shared_utils_1.summate(this.activeItems, 'unitTax');
     }
+    /**
+     * @description
+     * The actual line price, taking into account both item discounts _and_ prorated (proportionally-distributed)
+     * Order-level discounts. This value is the true economic value of the OrderLine, and is used in tax
+     * and refund calculations.
+     */
     get proratedLinePrice() {
         return shared_utils_1.summate(this.activeItems, 'proratedUnitPrice');
     }
+    /**
+     * @description
+     * The `proratedLinePrice` including tax.
+     */
     get proratedLinePriceWithTax() {
         return shared_utils_1.summate(this.activeItems, 'proratedUnitPriceWithTax');
     }

@@ -12,6 +12,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ExternalAuthenticationMethod = void 0;
 const typeorm_1 = require("typeorm");
 const authentication_method_entity_1 = require("./authentication-method.entity");
+/**
+ * @description
+ * This method is used when an external authentication service is used to authenticate Vendure Users.
+ * Examples of external auth include social logins or corporate identity servers.
+ *
+ * @docsCategory entities
+ * @docsPage AuthenticationMethod
+ */
 let ExternalAuthenticationMethod = class ExternalAuthenticationMethod extends authentication_method_entity_1.AuthenticationMethod {
     constructor(input) {
         super(input);

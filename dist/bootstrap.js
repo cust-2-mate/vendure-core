@@ -132,6 +132,7 @@ exports.bootstrapWorker = bootstrapWorker;
  * Setting the global config must be done prior to loading the AppModule.
  */
 async function preBootstrapConfig(userConfig) {
+    var _a;
     if (userConfig) {
         config_helpers_1.setConfig(userConfig);
     }
@@ -144,7 +145,8 @@ async function preBootstrapConfig(userConfig) {
         },
     });
     let config = config_helpers_1.getConfig();
-    set_entity_id_strategy_1.setEntityIdStrategy(config.entityIdStrategy, entities);
+    const entityIdStrategy = (_a = config.entityOptions.entityIdStrategy) !== null && _a !== void 0 ? _a : config.entityIdStrategy;
+    set_entity_id_strategy_1.setEntityIdStrategy(entityIdStrategy, entities);
     const customFieldValidationResult = validate_custom_fields_config_1.validateCustomFieldsConfig(config.customFields, entities);
     if (!customFieldValidationResult.valid) {
         process.exitCode = 1;

@@ -20,28 +20,31 @@ const generated_graphql_shop_errors_1 = require("../../common/error/generated-gr
 const adjustment_source_1 = require("../../common/types/adjustment-source");
 const utils_1 = require("../../common/utils");
 const config_service_1 = require("../../config/config.service");
+const transactional_connection_1 = require("../../connection/transactional-connection");
 const order_entity_1 = require("../../entity/order/order.entity");
 const promotion_entity_1 = require("../../entity/promotion/promotion.entity");
+const event_bus_1 = require("../../event-bus");
+const promotion_event_1 = require("../../event-bus/events/promotion-event");
 const config_arg_service_1 = require("../helpers/config-arg/config-arg.service");
 const list_query_builder_1 = require("../helpers/list-query-builder/list-query-builder");
 const patch_entity_1 = require("../helpers/utils/patch-entity");
-const transactional_connection_1 = require("../transaction/transactional-connection");
 const channel_service_1 = require("./channel.service");
+/**
+ * @description
+ * Contains methods relating to {@link Promotion} entities.
+ *
+ * @docsCategory services
+ */
 let PromotionService = class PromotionService {
-    constructor(connection, configService, channelService, listQueryBuilder, configArgService) {
+    constructor(connection, configService, channelService, listQueryBuilder, configArgService, eventBus) {
         this.connection = connection;
         this.configService = configService;
         this.channelService = channelService;
         this.listQueryBuilder = listQueryBuilder;
         this.configArgService = configArgService;
+        this.eventBus = eventBus;
         this.availableConditions = [];
         this.availableActions = [];
-        /**
-         * All active AdjustmentSources are cached in memory becuase they are needed
-         * every time an order is changed, which will happen often. Caching them means
-         * a DB call is not required newly each time.
-         */
-        this.activePromotions = [];
         this.availableConditions = this.configService.promotionOptions.promotionConditions || [];
         this.availableActions = this.configService.promotionOptions.promotionActions || [];
     }
@@ -70,15 +73,6 @@ let PromotionService = class PromotionService {
     getPromotionActions(ctx) {
         return this.availableActions.map(x => x.toGraphQlType(ctx));
     }
-    /**
-     * Returns all active AdjustmentSources.
-     */
-    async getActivePromotions() {
-        if (!this.activePromotions.length) {
-            await this.updatePromotions();
-        }
-        return this.activePromotions;
-    }
     async createPromotion(ctx, input) {
         const conditions = input.conditions.map(c => this.configArgService.parseInput('PromotionCondition', c));
         const actions = input.actions.map(a => this.configArgService.parseInput('PromotionAction', a));
@@ -97,9 +91,9 @@ let PromotionService = class PromotionService {
         if (promotion.conditions.length === 0 && !promotion.couponCode) {
             return new generated_graphql_admin_errors_1.MissingConditionsError();
         }
-        this.channelService.assignToCurrentChannel(promotion, ctx);
+        await this.channelService.assignToCurrentChannel(promotion, ctx);
         const newPromotion = await this.connection.getRepository(ctx, promotion_entity_1.Promotion).save(promotion);
-        await this.updatePromotions();
+        this.eventBus.publish(new promotion_event_1.PromotionEvent(ctx, newPromotion, 'created', input));
         return utils_1.assertFound(this.findOne(ctx, newPromotion.id));
     }
     async updatePromotion(ctx, input) {
@@ -118,20 +112,22 @@ let PromotionService = class PromotionService {
         }
         promotion.priorityScore = this.calculatePriorityScore(input);
         await this.connection.getRepository(ctx, promotion_entity_1.Promotion).save(updatedPromotion, { reload: false });
-        await this.updatePromotions();
+        this.eventBus.publish(new promotion_event_1.PromotionEvent(ctx, promotion, 'updated', input));
         return utils_1.assertFound(this.findOne(ctx, updatedPromotion.id));
     }
     async softDeletePromotion(ctx, promotionId) {
-        await this.connection.getEntityOrThrow(ctx, promotion_entity_1.Promotion, promotionId);
+        const promotion = await this.connection.getEntityOrThrow(ctx, promotion_entity_1.Promotion, promotionId);
         await this.connection
             .getRepository(ctx, promotion_entity_1.Promotion)
             .update({ id: promotionId }, { deletedAt: new Date() });
+        this.eventBus.publish(new promotion_event_1.PromotionEvent(ctx, promotion, 'deleted', promotionId));
         return {
             result: generated_types_1.DeletionResult.DELETED,
         };
     }
     async assignPromotionsToChannel(ctx, input) {
-        if (!utils_1.idsAreEqual(ctx.channelId, this.channelService.getDefaultChannel().id)) {
+        const defaultChannel = await this.channelService.getDefaultChannel();
+        if (!utils_1.idsAreEqual(ctx.channelId, defaultChannel.id)) {
             throw new errors_1.IllegalOperationError(`promotion-channels-can-only-be-changed-from-default-channel`);
         }
         const promotions = await this.connection.findByIdsInChannel(ctx, promotion_entity_1.Promotion, input.promotionIds, ctx.channelId, {});
@@ -141,7 +137,8 @@ let PromotionService = class PromotionService {
         return promotions;
     }
     async removePromotionsFromChannel(ctx, input) {
-        if (!utils_1.idsAreEqual(ctx.channelId, this.channelService.getDefaultChannel().id)) {
+        const defaultChannel = await this.channelService.getDefaultChannel();
+        if (!utils_1.idsAreEqual(ctx.channelId, defaultChannel.id)) {
             throw new errors_1.IllegalOperationError(`promotion-channels-can-only-be-changed-from-default-channel`);
         }
         const promotions = await this.connection.findByIdsInChannel(ctx, promotion_entity_1.Promotion, input.promotionIds, ctx.channelId, {});
@@ -150,6 +147,12 @@ let PromotionService = class PromotionService {
         }
         return promotions;
     }
+    /**
+     * @description
+     * Checks the validity of a coupon code, by checking that it is associated with an existing,
+     * enabled and non-expired Promotion. Additionally, if there is a usage limit on the coupon code,
+     * this method will enforce that limit against the specified Customer.
+     */
     async validateCouponCode(ctx, couponCode, customerId) {
         const promotion = await this.connection.getRepository(ctx, promotion_entity_1.Promotion).findOne({
             where: {
@@ -172,6 +175,10 @@ let PromotionService = class PromotionService {
         }
         return promotion;
     }
+    /**
+     * @description
+     * Used internally to associate a Promotion with an Order, once an Order has been placed.
+     */
     async addPromotionsToOrder(ctx, order) {
         const allPromotionIds = order.discounts.map(a => adjustment_source_1.AdjustmentSource.decodeSourceId(a.adjustmentSource).id);
         const promotionIds = unique_1.unique(allPromotionIds);
@@ -197,14 +204,6 @@ let PromotionService = class PromotionService {
             : [];
         return [...conditions, ...actions].reduce((score, op) => score + op.priorityValue, 0);
     }
-    /**
-     * Update the activeSources cache.
-     */
-    async updatePromotions() {
-        this.activePromotions = await this.connection.getRepository(promotion_entity_1.Promotion).find({
-            where: { enabled: true },
-        });
-    }
     validateRequiredConditions(conditions, actions) {
         const conditionCodes = conditions.reduce((codeMap, { code }) => (Object.assign(Object.assign({}, codeMap), { [code]: code })), {});
         for (const { code: actionCode } of actions) {
@@ -229,7 +228,8 @@ PromotionService = __decorate([
         config_service_1.ConfigService,
         channel_service_1.ChannelService,
         list_query_builder_1.ListQueryBuilder,
-        config_arg_service_1.ConfigArgService])
+        config_arg_service_1.ConfigArgService,
+        event_bus_1.EventBus])
 ], PromotionService);
 exports.PromotionService = PromotionService;
 //# sourceMappingURL=promotion.service.js.map

@@ -1,5 +1,13 @@
 import { DeepPartial } from '@vendure/common/lib/shared-types';
 import { AuthenticationMethod } from './authentication-method.entity';
+/**
+ * @description
+ * This is the default, built-in authentication method which uses a identifier (typically username or email address)
+ * and password combination to authenticate a User.
+ *
+ * @docsCategory entities
+ * @docsPage AuthenticationMethod
+ */
 export declare class NativeAuthenticationMethod extends AuthenticationMethod {
     constructor(input?: DeepPartial<NativeAuthenticationMethod>);
     identifier: string;
