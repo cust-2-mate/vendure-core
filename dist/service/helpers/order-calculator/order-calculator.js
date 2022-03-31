@@ -150,7 +150,12 @@ let OrderCalculator = class OrderCalculator {
         for (const line of order.lines) {
             // Must be re-calculated for each line, since the previous lines may have triggered promotions
             // which affected the order price.
-            const applicablePromotions = await filter_async_1.filterAsync(promotions, p => p.test(ctx, order).then(Boolean));
+            const initApplicablePromotions = await filter_async_1.filterAsync(promotions, p => p.test(ctx, order).then(Boolean));
+            const applicablePromotions =  Object.values(initApplicablePromotions.reduce((r, o) => {
+                const oSku = o.customFields.promoSKU
+                r[oSku] = (r[oSku] && r[oSku].priorityScore < o.priorityScore) ? r[oSku] : o
+                return r
+              }, {}));
             const lineHasExistingPromotions = !!((_b = (_a = line.firstItem) === null || _a === void 0 ? void 0 : _a.adjustments) === null || _b === void 0 ? void 0 : _b.find(a => a.type === generated_types_1.AdjustmentType.PROMOTION));
             const forceUpdateItems = this.orderLineHasInapplicablePromotions(applicablePromotions, line);
             if (forceUpdateItems || lineHasExistingPromotions) {

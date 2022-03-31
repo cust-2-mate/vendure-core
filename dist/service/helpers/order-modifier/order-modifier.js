@@ -327,7 +327,8 @@ let OrderModifier = class OrderModifier {
         const promotions = await this.connection.getRepository(ctx, promotion_entity_1.Promotion).find({
             where: { enabled: true, deletedAt: null },
             order: { priorityScore: 'ASC' },
-        });
+        })
+
         await this.orderCalculator.applyPriceAdjustments(ctx, order, promotions, updatedOrderLines, {
             recalculateShipping: (_g = input.options) === null || _g === void 0 ? void 0 : _g.recalculateShipping,
         });
