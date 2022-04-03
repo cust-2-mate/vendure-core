@@ -91,7 +91,7 @@ let OrderModifier = class OrderModifier {
         const orderLine = await this.connection.getRepository(ctx, order_line_entity_1.OrderLine).save(new order_line_entity_1.OrderLine({
             productVariant,
             taxCategory: productVariant.taxCategory,
-            featuredAsset: productVariant.product.featuredAsset,
+            //featuredAsset: productVariant.product.featuredAsset,
             customFields,
         }));
         await this.customFieldRelationService.updateRelations(ctx, order_line_entity_1.OrderLine, { customFields }, orderLine);

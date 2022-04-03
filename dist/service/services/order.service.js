@@ -329,20 +329,10 @@ let OrderService = class OrderService {
         if (validationError) {
             return validationError;
         }
-        const variant = await this.connection.getEntityOrThrow(ctx, product_variant_entity_1.ProductVariant, productVariantId, {
-            relations: ['product'],
-            where: {
-                enabled: true,
-                deletedAt: null,
-            },
-        });
-        if (variant.product.enabled === false) {
-            throw new errors_1.EntityNotFoundError('ProductVariant', productVariantId);
-        }
-        const correctedQuantity = await this.orderModifier.constrainQuantityToSaleable(ctx, variant, quantity, existingOrderLine === null || existingOrderLine === void 0 ? void 0 : existingOrderLine.quantity);
-        if (correctedQuantity === 0) {
-            return new generated_graphql_shop_errors_1.InsufficientStockError(correctedQuantity, order);
-        }
+
+        const existingQuantity = existingOrderLine === null || existingOrderLine === void 0 ? 0 : existingOrderLine.quantity;
+        const correctedQuantity = existingQuantity + quantity
+
         const orderLine = await this.orderModifier.getOrCreateOrderLine(ctx, order, productVariantId, customFields);
         if (correctedQuantity < quantity) {
             const newQuantity = (existingOrderLine ? existingOrderLine === null || existingOrderLine === void 0 ? void 0 : existingOrderLine.quantity : 0) + correctedQuantity;
@@ -1240,8 +1230,12 @@ let OrderService = class OrderService {
                 }
             }
         }
+        let myorderBarcodes = [];
+        for (const orderLine of order.lines) {
+            myorderBarcodes.push(orderLine.productVariant.sku)
+        }
         const { items: promotions } = await this.promotionService.findAll(ctx, {
-            filter: { enabled: { eq: true } },
+            filter: { promoSKU: {in:myorderBarcodes} },
             sort: { priorityScore: 'ASC' },
         });
         const updatedItems = await this.orderCalculator.applyPriceAdjustments(ctx, order, promotions, updatedOrderLines !== null && updatedOrderLines !== void 0 ? updatedOrderLines : []);

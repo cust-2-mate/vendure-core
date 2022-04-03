@@ -81,11 +81,10 @@ let ProductVariantService = class ProductVariantService {
         });
     }
     findOne(ctx, productVariantId) {
-        const relations = ['product', 'product.featuredAsset', 'taxCategory'];
+        const relations = ['taxCategory'];
         return this.connection
             .findOneInChannel(ctx, product_variant_entity_1.ProductVariant, productVariantId, ctx.channelId, {
             relations,
-            where: { deletedAt: null },
         })
             .then(async (result) => {
             if (result) {
