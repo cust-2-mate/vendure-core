@@ -1233,7 +1233,7 @@ let OrderService = class OrderService {
         let myorderBarcodes = [];
         myorderBarcodes.push('');
         for (const orderLine of order.lines) {
-            myorderBarcodes.push(orderLine.productVariant.sku)
+            myorderBarcodes.push(orderLine.productVariant.customFields.promoSKU)
         }
         const { items: promotions } = await this.promotionService.findAll(ctx, {
             filter: { promoSKU: {in:myorderBarcodes} },
