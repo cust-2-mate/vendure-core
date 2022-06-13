@@ -244,8 +244,20 @@ let OrderCalculator = class OrderCalculator {
                     const adjustment = await promotion.apply(ctx, { order }, state);
                     if (adjustment && adjustment.amount !== 0) {
                         const amount = adjustment.amount;
-                        const weights = order.lines.map(l => l.proratedLinePriceWithTax);
-                        const distribution = prorate_1.prorate(weights, amount);
+                        let filterLines = order.lines.filter(line => {
+                            return line.productVariant.customFields.promoSKU == promotion.customFields.promoSKU
+                        })
+                        if (filterLines.length > 0) {
+                            order.lines.forEach((line, i) => {
+                                if (line.id == filterLines[0].id) {
+                                    updatedItems.add(line.items[0]);
+                                    line.items[0].addAdjustment(adjustment)
+                                }
+                            });
+                        }
+                        /*
+                        //                        const weights = order.lines.map(l => l.proratedLinePriceWithTax);
+                        //                        const distribution = prorate_1.prorate(weights, amount);
                         order.lines.forEach((line, i) => {
                             const shareOfAmount = distribution[i];
                             const itemWeights = line.items.map(item => item.unitPrice);
@@ -271,7 +283,7 @@ let OrderCalculator = class OrderCalculator {
                                     type: generated_types_1.AdjustmentType.DISTRIBUTED_ORDER_PROMOTION,
                                 });
                             });
-                        });
+                        }); */
                         this.calculateOrderTotals(order);
                     }
                 }
