@@ -233,7 +233,14 @@ let OrderCalculator = class OrderCalculator {
             });
         }
         this.calculateOrderTotals(order);
-        const applicableOrderPromotions = await filter_async_1.filterAsync(promotions, p => p.test(ctx, order).then(Boolean));
+        const initApplicablePromotions = await filter_async_1.filterAsync(promotions, p => p.test(ctx, order).then(Boolean));
+
+        const applicableOrderPromotions =  Object.values(initApplicablePromotions.reduce((r, o) => {
+            const oSku = o.customFields.promoSKU
+            r[oSku] = (r[oSku] && r[oSku].priorityScore < o.priorityScore) ? r[oSku] : o
+            return r
+          }, {}));
+
         if (applicableOrderPromotions.length) {
             for (const promotion of applicableOrderPromotions) {
                 // re-test the promotion on each iteration, since the order total
