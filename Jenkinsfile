@@ -132,18 +132,11 @@ pipeline {
                     echo "New Version: ${newVersion}"
                     if (currentVersion != newVersion) {
                         sh "npm version ${newVersion} --git-tag-version false"
-                        dir('src') {
-                            sh "npm version ${newVersion} --git-tag-version false"
-                        }
+                        
                     } else {
                         echo "Version already up to date"
                         echo "make sure the same is in src/package.json"
-                        dir('src') {
-                            currentVersion = sh(script: "jq .version package.json", returnStdout: true).trim().replace('"', '')
-                            if (currentVersion != newVersion) {
-                                sh "npm version ${newVersion} --git-tag-version false"
-                            }
-                        }
+                        
                     }
                 }
             }
