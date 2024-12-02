@@ -107,7 +107,7 @@
   ],
   "license": "MIT",
   "main": "dist/index.js",
-  "name": "@vendure/core",
+  "name": "@c2m/vendure-core",
   "private": false,
   "publishConfig": {
     "access": "public"
