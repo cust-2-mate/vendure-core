@@ -48,7 +48,8 @@ pipeline {
                     sh 'apt-get update && apt-get install -y jq tree'
                     sh 'git config --global user.email "you@example.com"'
                     sh 'git config --global user.name "Your Name"'
-                    sh 'rm -rf node_modules dist test/reports'
+                    // sh 'rm -rf node_modules dist test/reports'
+                    sh 'rm -rf node_modules test/reports'
                     sh 'printenv'
                 }
             }
