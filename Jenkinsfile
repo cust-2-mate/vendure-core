@@ -146,13 +146,17 @@ pipeline {
         stage('Publish to npm') {
             steps {
                 script {
-                    npmUtils.build()
-                    dir('dist') {
-                        withNPM(npmrcConfig: 'push-to-vendure-core') {
+                    withNPM(npmrcConfig: 'push-to-vendure-core') {
                             echo 'Publish to npm'
                             sh 'npm publish --private'
                         }
-                    }
+                    // npmUtils.build()
+                    // dir('dist') {
+                    //     withNPM(npmrcConfig: 'push-to-vendure-core') {
+                    //         echo 'Publish to npm'
+                    //         sh 'npm publish --private'
+                    //     }
+                    // }
                 }
             }
         }
