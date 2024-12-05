@@ -15,6 +15,9 @@ pipeline {
                     if not available
                         error the pipeline with a message to provide a new version''')
         booleanParam(name: 'TEST', defaultValue: false, description: 'Run tests')
+
+        booleanParam(name: 'TEST_SECURE_CODE', defaultValue: false, description: 'test the code for security vulnerabilities')
+    
     }
     environment {
         BuildNumber = "${env.BUILD_NUMBER}"
@@ -38,6 +41,14 @@ pipeline {
     }
 
     stages {
+        stage('Run SCA Scan') {
+            steps {
+                script {
+                    securityUtils.snykReport("linux")
+                }
+            }
+        }
+    
         stage('setup and print env') {
             steps {
                 script {
